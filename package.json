@@ -1,0 +1,26 @@
+{
+  "name": "carelink-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CareLink — Plateforme intégrée de santé (Patient, Médecin, Pharmacie)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:patient": "npm run dev --workspace=apps/patient",
+    "dev:doctor": "npm run dev --workspace=apps/doctor",
+    "dev:pharmacy": "npm run dev --workspace=apps/pharmacy",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "keywords": [
+    "healthcare",
+    "telemedicine",
+    "pharmacy",
+    "supabase",
+    "typescript"
+  ],
+  "author": "CareLink Engineering",
+  "license": "UNLICENSED"
+}
