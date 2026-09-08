@@ -11,12 +11,9 @@ import type {
   SlotStatusType,
   ConsultationModeType,
   AppointmentStatusType,
-  ConsultationStatusType,
   PrescriptionStatusType,
-  TransferStatusType,
   OrderStatusType,
   FulfillmentStatusType,
-  PaymentMethodType,
   PaymentStatusType,
   NotificationType,
 } from './database.types';
@@ -205,4 +202,40 @@ export interface NotificationModel {
   data: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface MarketplaceSearchResult {
+  productId: string;
+  productName: string;
+  brand?: string;
+  genericName?: string;
+  form: string;
+  dosage: string;
+  description?: string;
+  price: number;
+  currency: string;
+  imageUrl?: string;
+  isPrescriptionRequired: boolean;
+  categoryId?: string;
+  categoryName?: string;
+  pharmacyId: string;
+  pharmacyName: string;
+  pharmacyAddress: string;
+  pharmacyDistrict?: string;
+  pharmacyCity: string;
+  pharmacyPhone: string;
+  pharmacyLatitude?: number;
+  pharmacyLongitude?: number;
+  isDutyPharmacy: boolean;
+  currentStock: number;
+  distanceKm?: number;
+}
+
+export interface AtomicOrderResult {
+  orderId: string;
+  orderNumber: string;
+  totalAmount: number;
+  insuranceAmount: number;
+  patientAmount: number;
+  status: OrderStatusType;
 }

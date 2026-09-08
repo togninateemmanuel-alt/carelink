@@ -80,3 +80,23 @@ Ce document récapitule les 28 tables du schéma de données centralisé de Care
 | :--- | :--- | :--- | :--- |
 | **`notifications`** | Notifications push et in-app aux destinataires | `id` (UUID) | `recipient_id` -> `profiles(id)` |
 | **`audit_logs`** | Traçabilité légale HIPAA/RGPD (qui, quoi, quand) | `id` (UUID) | `actor_id` -> `profiles(id)` |
+
+---
+
+## 9. Procédures Stockées & Fonctions Transactionnelles (RPC)
+
+| Fonction / Procédure RPC | Rôle Métier & Description | Sécurité & Concurrence |
+| :--- | :--- | :--- |
+| **`checkout_cart_atomic`** | Conversion atomique du panier en commande mère, verrouillage pessimiste de stock, calcul de tiers-payant d'assurance, ventilation par officine (`order_fulfillments`), notifications et vidage de panier | Verrous `FOR UPDATE` déterministes, transaction ACID intégrale |
+| **`search_marketplace`** | Moteur de recherche multi-officines simultané (nom, DCI, marque, catégorie) avec calcul géodésique de distance (Haversine) et état des stocks | `SECURITY DEFINER`, masque les marges et mouvements privés |
+| **`reserve_and_decrement_stock`** | Verrouillage pessimiste anti-concurrence garantissant qu'aucun stock ne devienne négatif | `FOR UPDATE` ordonné par product_id (anti-interblocage) |
+| **`book_appointment_slot`** | Réservation sécurisée d'un créneau médical par un patient avec notification au médecin | Verrou `FOR UPDATE` sur le créneau |
+| **`transfer_prescription_to_pharmacy`** | Déclenchement par le patient du transfert volontaire vers une officine choisie | Propriété patient vérifiée (`auth.uid() = patient_id`) |
+| **`respond_to_prescription_transfer`** | Traitement officinal (acceptation, rejet, préparation, délivrance) d'une ordonnance transférée | Restreint au personnel de l'officine destinataire |
+| **`initiate_dossier_transfer`** | Demande de transfert confraternel de dossier médical motivée cliniquement (Médecin A -> Médecin B) | Restreint aux médecins agréés avec accès actif |
+| **`respond_to_dossier_transfer`** | Réponse du confrère B avec octroi automatique d'un accès actif (`doctor_patient_access`) en cas d'acceptation | Restreint au confrère destinataire B |
+| **`complete_consultation_and_issue_prescription`** | Clôture d'une consultation, enregistrement de l'anamnèse et émission d'ordonnance signée de façon atomique | Réservé au médecin traitant agréé |
+| **`verify_doctor_account`** | Validation, agrément ou suspension administrative d'un praticien | Réservé exclusivement à `platform_admin` |
+| **`verify_pharmacy_account`** | Validation, agrément ou suspension administrative d'une officine pharmaceutique | Réservé exclusivement à `platform_admin` |
+| **`calculate_distance_km`** | Calcul géodésique de distance orthodromique entre deux coordonnées GPS (formule de Haversine en SQL pur) | `IMMUTABLE PARALLEL SAFE` |
+

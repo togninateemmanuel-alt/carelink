@@ -220,7 +220,64 @@ export class PharmacyService {
       query = query.eq('product_id', productId);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+  /**
+   * Fast Geospatial & Multi-Criteria Marketplace Search via search_marketplace() RPC
+   * Evaluates Haversine distance, joins stocks & pharmacies, and sorts server-side
+   */
+  async searchMarketplace(options: {
+    query?: string;
+    categoryId?: string;
+    latitude?: number;
+    longitude?: number;
+    maxDistanceKm?: number;
+    inStockOnly?: boolean;
+    sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'name' | 'stock_desc';
+    limit?: number;
+    offset?: number;
+  }) {
+    const { data, error } = await this.client.rpc('search_marketplace', {
+      p_query: options.query || null,
+      p_category_id: options.categoryId || null,
+      p_latitude: options.latitude ?? null,
+      p_longitude: options.longitude ?? null,
+      p_max_distance_km: options.maxDistanceKm ?? null,
+      p_in_stock_only: options.inStockOnly ?? true,
+      p_sort_by: options.sortBy || 'distance',
+      p_limit: options.limit || 50,
+      p_offset: options.offset || 0,
+    });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
+   * Pharmacy staff responds to a patient-transferred prescription (accept, reject, dispense)
+   */
+  async respondToPrescriptionTransfer(payload: {
+    transferId: string;
+    status: 'accepted' | 'rejected' | 'dispensing' | 'completed' | 'cancelled';
+    notes?: string;
+  }) {
+    const { data, error } = await this.client.rpc('respond_to_prescription_transfer', {
+      p_transfer_id: payload.transferId,
+      p_status: payload.status,
+      p_response_notes: payload.notes || null,
+    });
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Platform Admin verifies or suspends a pharmacy
+   */
+  async verifyPharmacy(pharmacyId: string, isVerified: boolean) {
+    const { data, error } = await this.client.rpc('verify_pharmacy_account', {
+      p_pharmacy_id: pharmacyId,
+      p_is_verified: isVerified,
+    });
+
     if (error) throw error;
     return data;
   }

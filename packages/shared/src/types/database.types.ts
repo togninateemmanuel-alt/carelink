@@ -1132,6 +1132,121 @@ export interface Database {
         };
         Returns: string; // log_id
       };
+      search_marketplace: {
+        Args: {
+          p_query?: string | null;
+          p_category_id?: string | null;
+          p_latitude?: number | null;
+          p_longitude?: number | null;
+          p_max_distance_km?: number | null;
+          p_in_stock_only?: boolean;
+          p_sort_by?: 'distance' | 'price_asc' | 'price_desc' | 'name' | 'stock_desc';
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: {
+          product_id: string;
+          product_name: string;
+          brand: string | null;
+          generic_name: string | null;
+          form: string;
+          dosage: string;
+          description: string | null;
+          price: number;
+          currency: string;
+          image_url: string | null;
+          is_prescription_required: boolean;
+          category_id: string | null;
+          category_name: string | null;
+          pharmacy_id: string;
+          pharmacy_name: string;
+          pharmacy_address: string;
+          pharmacy_district: string | null;
+          pharmacy_city: string;
+          pharmacy_phone: string;
+          pharmacy_latitude: number | null;
+          pharmacy_longitude: number | null;
+          is_duty_pharmacy: boolean;
+          current_stock: number;
+          distance_km: number | null;
+        }[];
+      };
+      checkout_cart_atomic: {
+        Args: {
+          p_patient_id: string;
+          p_delivery_mode: DeliveryModeType;
+          p_delivery_address?: string | null;
+          p_delivery_city?: string | null;
+          p_delivery_latitude?: number | null;
+          p_delivery_longitude?: number | null;
+          p_patient_insurance_id?: string | null;
+          p_patient_notes?: string | null;
+        };
+        Returns: Json; // { order_id, order_number, total_amount, insurance_amount, patient_amount, status }
+      };
+      respond_to_prescription_transfer: {
+        Args: {
+          p_transfer_id: string;
+          p_status: TransferStatusType;
+          p_response_notes?: string | null;
+        };
+        Returns: boolean;
+      };
+      initiate_dossier_transfer: {
+        Args: {
+          p_dossier_id: string;
+          p_to_doctor_id: string;
+          p_reason: string;
+          p_clinical_summary?: string | null;
+        };
+        Returns: string; // transfer_id
+      };
+      respond_to_dossier_transfer: {
+        Args: {
+          p_transfer_id: string;
+          p_accept: boolean;
+          p_response_notes?: string | null;
+        };
+        Returns: boolean;
+      };
+      complete_consultation_and_issue_prescription: {
+        Args: {
+          p_consultation_id: string;
+          p_diagnosis: string;
+          p_clinical_notes: string;
+          p_treatment_plan: string;
+          p_prescription_items?: Json | null;
+          p_prescription_instructions?: string | null;
+        };
+        Returns: Json; // { consultation_id, prescription_id, prescription_code, status }
+      };
+      verify_doctor_account: {
+        Args: {
+          p_doctor_id: string;
+          p_status: DoctorVerificationStatus;
+          p_notes?: string | null;
+        };
+        Returns: boolean;
+      };
+      verify_pharmacy_account: {
+        Args: {
+          p_pharmacy_id: string;
+          p_is_verified: boolean;
+        };
+        Returns: boolean;
+      };
+      is_verified_doctor: {
+        Args: {
+          p_doctor_id: string;
+        };
+        Returns: boolean;
+      };
+      is_verified_pharmacy: {
+        Args: {
+          p_pharmacy_id: string;
+        };
+        Returns: boolean;
+      };
     };
   };
 }

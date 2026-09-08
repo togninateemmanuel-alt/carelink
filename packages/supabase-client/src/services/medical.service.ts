@@ -72,29 +72,90 @@ export class MedicalService {
   }
 
   /**
-   * Doctor requests or accepts a dossier transfer
+   * Doctor requests a confraternal dossier transfer with clinical motivation via initiate_dossier_transfer() RPC
    */
   async initiateDossierTransfer(payload: {
     dossierId: string;
-    patientId: string;
-    fromDoctorId: string;
     toDoctorId: string;
-    transferReason: string;
+    reason: string;
     clinicalSummary?: string;
   }) {
-    const { data, error } = await this.client
-      .from('dossier_transfers')
-      .insert({
-        dossier_id: payload.dossierId,
-        patient_id: payload.patientId,
-        from_doctor_id: payload.fromDoctorId,
-        to_doctor_id: payload.toDoctorId,
-        transfer_reason: payload.transferReason,
-        clinical_summary: payload.clinicalSummary,
-        status: 'pending',
-      })
-      .select()
-      .single();
+    const { data, error } = await this.client.rpc('initiate_dossier_transfer', {
+      p_dossier_id: payload.dossierId,
+      p_to_doctor_id: payload.toDoctorId,
+      p_reason: payload.reason,
+      p_clinical_summary: payload.clinicalSummary || null,
+    });
+
+    if (error) throw error;
+    return data; // transfer_id
+  }
+
+  /**
+   * Doctor B responds to a dossier transfer request via respond_to_dossier_transfer() RPC
+   * Automatically grants active access upon acceptance
+   */
+  async respondToDossierTransfer(payload: {
+    transferId: string;
+    accept: boolean;
+    notes?: string;
+  }) {
+    const { data, error } = await this.client.rpc('respond_to_dossier_transfer', {
+      p_transfer_id: payload.transferId,
+      p_accept: payload.accept,
+      p_response_notes: payload.notes || null,
+    });
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Completes a consultation and optionally issues a digitally signed prescription atomically
+   */
+  async completeConsultation(payload: {
+    consultationId: string;
+    diagnosis: string;
+    clinicalNotes: string;
+    treatmentPlan: string;
+    prescriptionItems?: {
+      medication_name: string;
+      dosage: string;
+      form: string;
+      quantity: number;
+      frequency: string;
+      duration_days: number;
+      instructions?: string;
+    }[];
+    prescriptionInstructions?: string;
+  }) {
+    const { data, error } = await this.client.rpc('complete_consultation_and_issue_prescription', {
+      p_consultation_id: payload.consultationId,
+      p_diagnosis: payload.diagnosis,
+      p_clinical_notes: payload.clinicalNotes,
+      p_treatment_plan: payload.treatmentPlan,
+      p_prescription_items: (payload.prescriptionItems as unknown as Json) || null,
+      p_prescription_instructions: payload.prescriptionInstructions || null,
+    });
+
+    if (error) throw error;
+    return data as unknown as {
+      consultation_id: string;
+      prescription_id: string | null;
+      prescription_code: string | null;
+      status: string;
+    };
+  }
+
+  /**
+   * Platform Admin verifies, approves or suspends a doctor account
+   */
+  async verifyDoctor(doctorId: string, status: 'pending' | 'verified' | 'rejected' | 'suspended', notes?: string) {
+    const { data, error } = await this.client.rpc('verify_doctor_account', {
+      p_doctor_id: doctorId,
+      p_status: status,
+      p_notes: notes || null,
+    });
 
     if (error) throw error;
     return data;

@@ -93,119 +93,63 @@ export class OrderService {
   }
 
   /**
-   * Places order with Pessimistic Stock Lock via reserve_and_decrement_stock() RPC
-   * Partitions fulfillments across pharmacies
+   * Places order with 100% Server-Side ACID Transaction via checkout_cart_atomic()
+   * Pessimistic row locking, anti-tamper pricing from DB, insurance deduction,
+   * fulfillment partitioning, in-app notifications and cart purge.
+   */
+  async checkoutAtomic(payload: {
+    patientId: string;
+    deliveryMode: DeliveryModeType;
+    deliveryAddress?: string;
+    deliveryCity?: string;
+    deliveryLatitude?: number;
+    deliveryLongitude?: number;
+    patientInsuranceId?: string;
+    patientNotes?: string;
+  }) {
+    const { data, error } = await this.client.rpc('checkout_cart_atomic', {
+      p_patient_id: payload.patientId,
+      p_delivery_mode: payload.deliveryMode,
+      p_delivery_address: payload.deliveryAddress || null,
+      p_delivery_city: payload.deliveryCity || null,
+      p_delivery_latitude: payload.deliveryLatitude || null,
+      p_delivery_longitude: payload.deliveryLongitude || null,
+      p_patient_insurance_id: payload.patientInsuranceId || null,
+      p_patient_notes: payload.patientNotes || null,
+    });
+
+    if (error) throw error;
+    return data as unknown as {
+      order_id: string;
+      order_number: string;
+      total_amount: number;
+      insurance_amount: number;
+      patient_amount: number;
+      status: string;
+    };
+  }
+
+  /**
+   * Legacy checkout method (delegates to checkoutAtomic for transaction safety)
    */
   async checkoutOrder(payload: {
     patientId: string;
     cartId: string;
-    items: {
-      productId: string;
-      productName: string;
-      pharmacyId: string;
-      quantity: number;
-      unitPrice: number;
-    }[];
+    items?: unknown[];
     deliveryMode: DeliveryModeType;
     deliveryAddress?: string;
-    insuranceAmount?: number;
+    deliveryCity?: string;
+    patientInsuranceId?: string;
     notes?: string;
   }) {
-    if (!payload.items || payload.items.length === 0) {
-      throw new Error('Le panier est vide.');
-    }
-
-    const totalAmount = payload.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-    const insurancePart = payload.insuranceAmount || 0;
-    const patientPart = Math.max(0, totalAmount - insurancePart);
-
-    // 1. Create parent order
-    const { data: order, error: orderError } = await this.client
-      .from('orders')
-      .insert({
-        patient_id: payload.patientId,
-        total_amount: totalAmount,
-        insurance_amount: insurancePart,
-        patient_amount: patientPart,
-        status: 'pending',
-        payment_status: 'pending',
-        delivery_mode: payload.deliveryMode,
-        delivery_address: payload.deliveryAddress || null,
-        patient_notes: payload.notes || null,
-      })
-      .select()
-      .single();
-
-    if (orderError) throw orderError;
-
-    // 2. Group items by pharmacy_id
-    const pharmacyGroups = new Map<string, typeof payload.items>();
-    for (const item of payload.items) {
-      const group = pharmacyGroups.get(item.pharmacyId) || [];
-      group.push(item);
-      pharmacyGroups.set(item.pharmacyId, group);
-    }
-
-    // 3. Create fulfillments and items per pharmacy
-    for (const [pharmacyId, groupItems] of pharmacyGroups.entries()) {
-      const subtotal = groupItems.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-      const fulfillmentNumber = `FUL-${Date.now().toString().slice(-6)}-${pharmacyId.slice(0, 4).toUpperCase()}`;
-
-      const { data: fulfillment, error: fulError } = await this.client
-        .from('order_fulfillments')
-        .insert({
-          order_id: order.id,
-          pharmacy_id: pharmacyId,
-          fulfillment_number: fulfillmentNumber,
-          subtotal_amount: subtotal,
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (fulError) throw fulError;
-
-      const orderItemsToInsert = groupItems.map((gi) => ({
-        order_fulfillment_id: fulfillment.id,
-        product_id: gi.productId,
-        product_name: gi.productName,
-        quantity: gi.quantity,
-        unit_price: gi.unitPrice,
-        total_price: gi.unitPrice * gi.quantity,
-      }));
-
-      const { error: itemsErr } = await this.client
-        .from('order_items')
-        .insert(orderItemsToInsert);
-
-      if (itemsErr) throw itemsErr;
-    }
-
-    // 4. TRANSACTIONAL STOCK DECREMENT VIA POSTGRESQL RPC
-    // Applies FOR UPDATE row locking and rejects if stock is insufficient
-    const rpcPayload = payload.items.map((i) => ({
-      product_id: i.productId,
-      quantity: i.quantity,
-    }));
-
-    const { error: rpcError } = await this.client.rpc('reserve_and_decrement_stock', {
-      p_order_id: order.id,
-      p_items: rpcPayload,
+    return this.checkoutAtomic({
+      patientId: payload.patientId,
+      deliveryMode: payload.deliveryMode,
+      deliveryAddress: payload.deliveryAddress,
+      deliveryCity: payload.deliveryCity,
+      patientInsuranceId: payload.patientInsuranceId,
+      patientNotes: payload.notes,
     });
-
-    if (rpcError) {
-      // Mark order as cancelled if decrement failed
-      await this.client
-        .from('orders')
-        .update({ status: 'cancelled' })
-        .eq('id', order.id);
-      throw new Error(`Échec de la commande : ${rpcError.message}`);
-    }
-
-    // 5. Clear cart
-    await this.client.from('cart_items').delete().eq('cart_id', payload.cartId);
-
-    return order;
   }
 
   /**

@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.npm-cache/
 .pnp
 .pnp.js
 
@@ -44,3 +45,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+vite.log
+*.tsbuildinfo

@@ -22,5 +22,12 @@
     "typescript"
   ],
   "author": "CareLink Engineering",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/ssr": "^0.12.6",
+    "@supabase/supabase-js": "^2.116.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0"
+  }
 }
