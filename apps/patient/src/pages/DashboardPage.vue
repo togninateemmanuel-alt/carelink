@@ -145,8 +145,27 @@ import { supabase } from '@/lib/supabase';
 
 const authStore = useAuthStore();
 const loadingAppointments = ref(false);
-const appointments = ref<Record<string, unknown>[]>([]);
-const prescriptions = ref<Record<string, unknown>[]>([]);
+interface Appointment {
+  id: string;
+  scheduled_at: string;
+  status: string;
+  reason_for_visit: string | null;
+  doctor_name: string;
+}
+
+interface AppointmentQuery extends Omit<Appointment, 'doctor_name'> {
+  doctor: { first_name: string; last_name: string } | null;
+}
+
+interface Prescription {
+  id: string;
+  prescription_code: string;
+  status: string;
+  created_at: string;
+}
+
+const appointments = ref<Appointment[]>([]);
+const prescriptions = ref<Prescription[]>([]);
 const stats = ref({ appointments: 0, prescriptions: 0, orders: 0, notifications: 0 });
 
 const quickActions = [
@@ -182,9 +201,10 @@ onMounted(async () => {
       .order('scheduled_at', { ascending: true })
       .limit(5);
 
-    appointments.value = (appts ?? []).map((a: Record<string, unknown>) => ({
+    const appointmentData = (appts ?? []) as unknown as AppointmentQuery[];
+    appointments.value = appointmentData.map((a) => ({
       ...a,
-      doctor_name: `${(a.doctor as Record<string, string>)?.first_name} ${(a.doctor as Record<string, string>)?.last_name}`,
+      doctor_name: `${a.doctor?.first_name ?? ''} ${a.doctor?.last_name ?? ''}`.trim() || 'Médecin',
     }));
 
     // Fetch recent prescriptions
@@ -195,7 +215,7 @@ onMounted(async () => {
       .order('created_at', { ascending: false })
       .limit(3);
 
-    prescriptions.value = rxs ?? [];
+    prescriptions.value = (rxs ?? []) as Prescription[];
 
     // Count stats
     const [{ count: apptCount }, { count: rxCount }, { count: orderCount }, { count: notifCount }] =
