@@ -1,138 +1,156 @@
 <template>
   <AppLayout page-title="Tableau de bord">
-    <!-- Hero welcome card -->
-    <div class="hero-gradient mb-8" style="margin-bottom:var(--space-8)">
-      <div style="position:relative;z-index:1">
-        <p style="font-size:var(--font-size-sm);opacity:0.8;margin-bottom:var(--space-2);font-weight:500">Bonjour 👋</p>
-        <h1 style="font-size:var(--font-size-3xl);font-weight:800;margin-bottom:var(--space-3);color:white">{{ authStore.fullName || 'Bienvenue !' }}</h1>
-        <p style="opacity:0.8;max-width:500px;color:white;font-size:var(--font-size-sm)">Votre tableau de bord santé personnel. Gérez vos rendez-vous, ordonnances et commandes en toute sécurité.</p>
-        <div style="margin-top:var(--space-6);display:flex;gap:var(--space-3)">
-          <RouterLink to="/appointments/new" class="btn" style="background:white;color:var(--color-primary-700);font-weight:600">
-            📅 Prendre un RDV
+    <!-- Welcome card -->
+    <section class="dash-hero">
+      <div class="dash-hero-content">
+        <p class="dash-hero-hello">Bonjour 👋</p>
+        <h1 class="dash-hero-name">{{ authStore.fullName || 'Bienvenue' }}</h1>
+        <p class="dash-hero-sub">Votre espace santé personnel</p>
+        <div class="dash-hero-actions">
+          <RouterLink to="/appointments/new" class="dash-btn dash-btn-light">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Prendre RDV
           </RouterLink>
-          <RouterLink to="/marketplace" class="btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3)">
-            💊 Marketplace
+          <RouterLink to="/marketplace" class="dash-btn dash-btn-ghost">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+            </svg>
+            Pharmacie
           </RouterLink>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Stats row -->
-    <div class="grid-4 mb-8" style="margin-bottom:var(--space-8)">
-      <div class="stat-card">
-        <div class="stat-icon blue">📅</div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.appointments }}</div>
-          <div class="stat-label">RDV à venir</div>
+    <!-- Stats -->
+    <section class="dash-stats">
+      <div class="dash-stat">
+        <div class="dash-stat-icon blue">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="dash-stat-value">{{ stats.appointments }}</div>
+          <div class="dash-stat-label">RDV à venir</div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon teal">📋</div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.prescriptions }}</div>
-          <div class="stat-label">Ordonnances actives</div>
+      <div class="dash-stat">
+        <div class="dash-stat-icon teal">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="dash-stat-value">{{ stats.prescriptions }}</div>
+          <div class="dash-stat-label">Ordonnances</div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon green">📦</div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.orders }}</div>
-          <div class="stat-label">Commandes en cours</div>
+      <div class="dash-stat">
+        <div class="dash-stat-icon green">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="dash-stat-value">{{ stats.orders }}</div>
+          <div class="dash-stat-label">Commandes</div>
         </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-icon amber">🔔</div>
-        <div class="stat-content">
-          <div class="stat-value">{{ stats.notifications }}</div>
-          <div class="stat-label">Notifications</div>
+      <div class="dash-stat">
+        <div class="dash-stat-icon amber">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+        </div>
+        <div>
+          <div class="dash-stat-value">{{ stats.notifications }}</div>
+          <div class="dash-stat-label">Alertes</div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Two column layout -->
-    <div style="display:grid;grid-template-columns:3fr 2fr;gap:var(--space-6)">
-      <!-- Upcoming appointments -->
-      <div class="card">
-        <div class="flex items-center justify-between mb-4" style="margin-bottom:var(--space-5)">
-          <h2 class="font-bold" style="font-size:var(--font-size-lg)">Prochains rendez-vous</h2>
-          <RouterLink to="/appointments" class="btn btn-ghost btn-sm text-sm" style="color:var(--color-primary-600)">Voir tout →</RouterLink>
+    <!-- Appointments -->
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <h2>Prochains RDV</h2>
+        <RouterLink to="/appointments" class="dash-link">Voir tout</RouterLink>
+      </div>
+
+      <div v-if="loadingAppointments" class="dash-loading">
+        <div class="spinner" />
+      </div>
+
+      <div v-else-if="appointments.length === 0" class="dash-empty">
+        <div class="dash-empty-icon">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
         </div>
+        <p class="dash-empty-title">Aucun rendez-vous</p>
+        <p class="dash-empty-desc">Réservez votre première consultation en ligne.</p>
+        <RouterLink to="/appointments/new" class="btn btn-primary btn-sm">Prendre un RDV</RouterLink>
+      </div>
 
-        <div v-if="loadingAppointments" class="loading-overlay">
-          <div class="spinner" />
-        </div>
-
-        <div v-else-if="appointments.length === 0" class="empty-state" style="padding:var(--space-8)">
-          <div class="empty-icon">📅</div>
-          <div class="empty-title">Aucun rendez-vous</div>
-          <div class="empty-desc">Prenez votre premier rendez-vous médical en ligne.</div>
-          <RouterLink to="/appointments/new" class="btn btn-primary btn-sm">Prendre un RDV</RouterLink>
-        </div>
-
-        <div v-else style="display:flex;flex-direction:column;gap:var(--space-3)">
-          <div v-for="appt in appointments" :key="appt.id"
-            style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4);border:1px solid var(--color-border);border-radius:var(--radius-lg);transition:background var(--transition-fast)"
-            @mouseover="($event.target as HTMLElement).closest('div')!.style.background='var(--color-neutral-50)'"
-            @mouseleave="($event.target as HTMLElement).closest('div')!.style.background=''"
-          >
-            <div style="width:48px;height:48px;border-radius:var(--radius-lg);background:var(--color-primary-50);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
-              <span style="font-size:var(--font-size-lg);font-weight:800;color:var(--color-primary-700);line-height:1">{{ formatDay(appt.scheduled_at) }}</span>
-              <span style="font-size:var(--font-size-xs);color:var(--color-primary-500);text-transform:uppercase;font-weight:600">{{ formatMonth(appt.scheduled_at) }}</span>
-            </div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:600;font-size:var(--font-size-sm)" class="truncate">Dr. {{ appt.doctor_name }}</div>
-              <div style="font-size:var(--font-size-xs);color:var(--color-text-sub)">{{ appt.reason_for_visit }}</div>
-              <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-top:2px">{{ formatTime(appt.scheduled_at) }}</div>
-            </div>
-            <span class="badge" :class="statusBadge(appt.status)">{{ appt.status }}</span>
+      <div v-else class="dash-list">
+        <div v-for="appt in appointments" :key="appt.id" class="dash-list-item">
+          <div class="dash-date-box">
+            <span class="dash-date-day">{{ formatDay(appt.scheduled_at) }}</span>
+            <span class="dash-date-month">{{ formatMonth(appt.scheduled_at) }}</span>
           </div>
+          <div class="dash-list-body">
+            <div class="dash-list-title">Dr. {{ appt.doctor_name }}</div>
+            <div class="dash-list-sub">{{ appt.reason_for_visit || 'Consultation' }}</div>
+            <div class="dash-list-meta">{{ formatTime(appt.scheduled_at) }}</div>
+          </div>
+          <span class="badge" :class="statusBadge(appt.status)">{{ appt.status }}</span>
         </div>
       </div>
+    </section>
 
-      <!-- Right column -->
-      <div style="display:flex;flex-direction:column;gap:var(--space-6)">
-        <!-- Recent prescriptions -->
-        <div class="card">
-          <div class="flex items-center justify-between" style="margin-bottom:var(--space-4)">
-            <h2 class="font-bold" style="font-size:var(--font-size-base)">Ordonnances récentes</h2>
-            <RouterLink to="/prescriptions" class="btn btn-ghost btn-sm" style="color:var(--color-primary-600);font-size:var(--font-size-xs)">Voir →</RouterLink>
-          </div>
+    <!-- Prescriptions -->
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <h2>Ordonnances récentes</h2>
+        <RouterLink to="/prescriptions" class="dash-link">Voir tout</RouterLink>
+      </div>
 
-          <div v-if="prescriptions.length === 0" style="text-align:center;padding:var(--space-6);color:var(--color-text-muted);font-size:var(--font-size-sm)">
-            Aucune ordonnance
-          </div>
+      <div v-if="prescriptions.length === 0" class="dash-empty compact">
+        <p class="dash-empty-desc">Aucune ordonnance pour le moment.</p>
+      </div>
 
-          <div v-else style="display:flex;flex-direction:column;gap:var(--space-3)">
-            <div v-for="rx in prescriptions" :key="rx.id"
-              style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-neutral-50)">
-              <div style="width:36px;height:36px;background:var(--color-primary-50);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">💊</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:var(--font-size-xs);font-weight:600" class="truncate">{{ rx.prescription_code }}</div>
-                <div style="font-size:var(--font-size-xs);color:var(--color-text-muted)">{{ formatDate(rx.created_at) }}</div>
-              </div>
-              <span class="badge" :class="rx.status === 'active' ? 'badge-green' : 'badge-neutral'">{{ rx.status }}</span>
-            </div>
+      <div v-else class="dash-list">
+        <div v-for="rx in prescriptions" :key="rx.id" class="dash-list-item">
+          <div class="dash-rx-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+            </svg>
           </div>
-        </div>
-
-        <!-- Quick actions -->
-        <div class="card">
-          <h2 class="font-bold mb-4" style="font-size:var(--font-size-base);margin-bottom:var(--space-4)">Accès rapide</h2>
-          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
-            <RouterLink v-for="action in quickActions" :key="action.to" :to="action.to"
-              style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);font-size:var(--font-size-sm);color:var(--color-text-main);font-weight:500;transition:background var(--transition-fast)"
-              @mouseover="($event.target as HTMLElement).closest('a')!.style.background='var(--color-neutral-50)'"
-              @mouseleave="($event.target as HTMLElement).closest('a')!.style.background=''">
-              <span style="font-size:1.2rem">{{ action.icon }}</span>
-              <span>{{ action.label }}</span>
-              <svg style="margin-left:auto;color:var(--color-text-muted)" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </RouterLink>
+          <div class="dash-list-body">
+            <div class="dash-list-title">{{ rx.prescription_code }}</div>
+            <div class="dash-list-meta">{{ formatDate(rx.created_at) }}</div>
           </div>
+          <span class="badge" :class="rx.status === 'active' ? 'badge-green' : 'badge-neutral'">{{ rx.status }}</span>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- Quick actions -->
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <h2>Accès rapide</h2>
+      </div>
+      <div class="dash-quick">
+        <RouterLink v-for="action in quickActions" :key="action.to" :to="action.to" class="dash-quick-item">
+          <span class="dash-quick-icon" v-html="action.icon" />
+          <span class="dash-quick-label">{{ action.label }}</span>
+          <svg class="dash-quick-arrow" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </RouterLink>
+      </div>
+    </section>
   </AppLayout>
 </template>
 
@@ -145,6 +163,7 @@ import { supabase } from '@/lib/supabase';
 
 const authStore = useAuthStore();
 const loadingAppointments = ref(false);
+
 interface Appointment {
   id: string;
   scheduled_at: string;
@@ -169,10 +188,26 @@ const prescriptions = ref<Prescription[]>([]);
 const stats = ref({ appointments: 0, prescriptions: 0, orders: 0, notifications: 0 });
 
 const quickActions = [
-  { to: '/dossier', icon: '📋', label: 'Mon dossier médical' },
-  { to: '/marketplace', icon: '🔍', label: 'Rechercher un médicament' },
-  { to: '/cart', icon: '🛒', label: 'Mon panier' },
-  { to: '/profile', icon: '👤', label: 'Mon profil' },
+  {
+    to: '/dossier',
+    label: 'Mon dossier médical',
+    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>`,
+  },
+  {
+    to: '/marketplace',
+    label: 'Rechercher un médicament',
+    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>`,
+  },
+  {
+    to: '/cart',
+    label: 'Mon panier',
+    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`,
+  },
+  {
+    to: '/profile',
+    label: 'Mon profil',
+    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>`,
+  },
 ];
 
 function formatDay(dt: string) { return new Date(dt).getDate(); }
@@ -192,7 +227,6 @@ onMounted(async () => {
 
   loadingAppointments.value = true;
   try {
-    // Fetch upcoming appointments
     const { data: appts } = await supabase
       .from('appointments')
       .select('id, scheduled_at, status, reason_for_visit, doctor:profiles!appointments_doctor_id_fkey(first_name, last_name)')
@@ -207,7 +241,6 @@ onMounted(async () => {
       doctor_name: `${a.doctor?.first_name ?? ''} ${a.doctor?.last_name ?? ''}`.trim() || 'Médecin',
     }));
 
-    // Fetch recent prescriptions
     const { data: rxs } = await supabase
       .from('prescriptions')
       .select('id, prescription_code, status, created_at')
@@ -217,7 +250,6 @@ onMounted(async () => {
 
     prescriptions.value = (rxs ?? []) as Prescription[];
 
-    // Count stats
     const [{ count: apptCount }, { count: rxCount }, { count: orderCount }, { count: notifCount }] =
       await Promise.all([
         supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('patient_id', authStore.user.id).gte('scheduled_at', new Date().toISOString()),
