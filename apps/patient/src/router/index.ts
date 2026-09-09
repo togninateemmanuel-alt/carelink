@@ -4,8 +4,10 @@ import { useAuthStore } from '@/stores/auth';
 const AuthPage = () => import('@/pages/AuthPage.vue');
 const DashboardPage = () => import('@/pages/DashboardPage.vue');
 const ProfilePage = () => import('@/pages/ProfilePage.vue');
+const DossierPage = () => import('@/pages/DossierPage.vue');
 const AppointmentsPage = () => import('@/pages/AppointmentsPage.vue');
 const AppointmentBookingPage = () => import('@/pages/AppointmentBookingPage.vue');
+const PrescriptionsPage = () => import('@/pages/PrescriptionsPage.vue');
 const MarketplacePage = () => import('@/pages/MarketplacePage.vue');
 const CartPage = () => import('@/pages/CartPage.vue');
 const OrdersPage = () => import('@/pages/OrdersPage.vue');
@@ -19,10 +21,10 @@ export const router = createRouter({
     { path: '/', redirect: '/dashboard' },
     { path: '/dashboard', name: 'dashboard', component: DashboardPage, meta: { requiresAuth: true } },
     { path: '/profile', name: 'profile', component: ProfilePage, meta: { requiresAuth: true } },
-    { path: '/dossier', name: 'dossier', component: PlaceholderPage, meta: { requiresAuth: true } },
+    { path: '/dossier', name: 'dossier', component: DossierPage, meta: { requiresAuth: true } },
     { path: '/appointments', name: 'appointments', component: AppointmentsPage, meta: { requiresAuth: true } },
     { path: '/appointments/new', name: 'appointments-new', component: AppointmentBookingPage, meta: { requiresAuth: true } },
-    { path: '/prescriptions', name: 'prescriptions', component: PlaceholderPage, meta: { requiresAuth: true } },
+    { path: '/prescriptions', name: 'prescriptions', component: PrescriptionsPage, meta: { requiresAuth: true } },
     { path: '/marketplace', name: 'marketplace', component: MarketplacePage, meta: { requiresAuth: true } },
     { path: '/cart', name: 'cart', component: CartPage, meta: { requiresAuth: true } },
     { path: '/orders', name: 'orders', component: OrdersPage, meta: { requiresAuth: true } },

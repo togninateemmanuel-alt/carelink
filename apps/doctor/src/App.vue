@@ -12,36 +12,44 @@
     </header>
 
     <main class="doc-main">
-      <!-- Auth -->
       <section v-if="!session" class="doc-card">
         <h1>Connexion médecin</h1>
-        <p class="doc-muted">Accédez à votre agenda, consultations et ordonnances.</p>
-
+        <p class="doc-muted">Agenda, créneaux et rendez-vous patients.</p>
         <div v-if="error" class="doc-alert">{{ error }}</div>
-
         <form @submit.prevent="signIn">
           <label class="doc-label">Email</label>
           <input v-model="email" type="email" class="doc-input" required />
-
           <label class="doc-label">Mot de passe</label>
           <input v-model="password" type="password" class="doc-input" required />
-
           <button class="doc-btn primary" type="submit" :disabled="loading">
             {{ loading ? 'Connexion…' : 'Se connecter' }}
           </button>
         </form>
-
-        <p class="doc-note">
-          Le compte doit avoir le rôle <strong>doctor</strong> dans la table profiles.
-          L’élévation de rôle n’est pas possible depuis le frontend.
-        </p>
+        <p class="doc-note">Le rôle <strong>doctor</strong> doit être défini en base. Impossible de s’auto-promouvoir.</p>
       </section>
 
-      <!-- Dashboard -->
       <template v-else>
         <section class="doc-card">
-          <h1>Bonjour, Dr. {{ doctorName }}</h1>
-          <p class="doc-muted">Statut : {{ verificationStatus }}</p>
+          <h1>Dr. {{ doctorName }}</h1>
+          <p class="doc-muted">Vérification : {{ verificationStatus }}</p>
+        </section>
+
+        <section class="doc-card">
+          <h2>Publier un créneau</h2>
+          <div v-if="slotError" class="doc-alert">{{ slotError }}</div>
+          <div v-if="slotSuccess" class="doc-success">{{ slotSuccess }}</div>
+          <label class="doc-label">Début</label>
+          <input v-model="newSlot.start" type="datetime-local" class="doc-input" />
+          <label class="doc-label">Fin</label>
+          <input v-model="newSlot.end" type="datetime-local" class="doc-input" />
+          <label class="doc-label">Mode</label>
+          <select v-model="newSlot.mode" class="doc-input">
+            <option value="in_person">Présentiel</option>
+            <option value="teleconsultation">Téléconsultation</option>
+          </select>
+          <button class="doc-btn primary" type="button" :disabled="savingSlot" @click="createSlot">
+            {{ savingSlot ? 'Publication…' : 'Publier le créneau' }}
+          </button>
         </section>
 
         <section class="doc-card">
@@ -61,11 +69,11 @@
 
         <section class="doc-card">
           <h2>Créneaux disponibles</h2>
-          <div v-if="slots.length === 0" class="doc-muted">Aucun créneau libre publié.</div>
+          <div v-if="slots.length === 0" class="doc-muted">Aucun créneau libre.</div>
           <ul v-else class="doc-list">
             <li v-for="s in slots" :key="s.id">
               <div class="doc-muted">{{ formatDt(s.start_time) }} → {{ formatTime(s.end_time) }}</div>
-              <span class="doc-badge">{{ s.status }}</span>
+              <button class="doc-btn ghost" type="button" @click="disableSlot(s.id)">Désactiver</button>
             </li>
           </ul>
         </section>
@@ -75,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, reactive } from 'vue';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
 
@@ -88,6 +96,15 @@ const profile = ref<any>(null);
 const appointments = ref<any[]>([]);
 const slots = ref<any[]>([]);
 const loadingAppts = ref(false);
+const savingSlot = ref(false);
+const slotError = ref('');
+const slotSuccess = ref('');
+
+const newSlot = reactive({
+  start: '',
+  end: '',
+  mode: 'in_person' as 'in_person' | 'teleconsultation',
+});
 
 const doctorName = computed(() => {
   if (!profile.value) return '';
@@ -148,12 +165,56 @@ async function loadDoctorData() {
       .eq('status', 'available')
       .gte('start_time', new Date().toISOString())
       .order('start_time', { ascending: true })
-      .limit(20);
+      .limit(30);
 
     slots.value = slotRows ?? [];
   } finally {
     loadingAppts.value = false;
   }
+}
+
+async function createSlot() {
+  if (!session.value?.user) return;
+  slotError.value = '';
+  slotSuccess.value = '';
+
+  if (!newSlot.start || !newSlot.end) {
+    slotError.value = 'Renseignez début et fin.';
+    return;
+  }
+
+  const start = new Date(newSlot.start);
+  const end = new Date(newSlot.end);
+  if (!(end > start)) {
+    slotError.value = 'La fin doit être après le début.';
+    return;
+  }
+
+  savingSlot.value = true;
+  try {
+    const { error: insErr } = await supabase.from('doctor_slots').insert({
+      doctor_id: session.value.user.id,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      status: 'available',
+      consultation_mode: newSlot.mode,
+      capacity: 1,
+    });
+    if (insErr) throw insErr;
+    slotSuccess.value = 'Créneau publié.';
+    newSlot.start = '';
+    newSlot.end = '';
+    await loadDoctorData();
+  } catch (e: unknown) {
+    slotError.value = (e as Error).message || 'Publication impossible.';
+  } finally {
+    savingSlot.value = false;
+  }
+}
+
+async function disableSlot(id: string) {
+  await supabase.from('doctor_slots').update({ status: 'cancelled' }).eq('id', id);
+  await loadDoctorData();
 }
 
 async function signIn() {
@@ -186,7 +247,6 @@ onMounted(async () => {
   const { data } = await supabase.auth.getSession();
   session.value = data.session;
   if (session.value) await loadDoctorData();
-
   supabase.auth.onAuthStateChange((_event, s) => {
     session.value = s;
   });
@@ -194,11 +254,7 @@ onMounted(async () => {
 </script>
 
 <style>
-:root {
-  font-family: Inter, system-ui, sans-serif;
-  color: #0f172a;
-  background: #f1f5f9;
-}
+:root { font-family: Inter, system-ui, sans-serif; color: #0f172a; background: #f1f5f9; }
 * { box-sizing: border-box; }
 body { margin: 0; }
 .doc-app { min-height: 100vh; }
@@ -227,7 +283,7 @@ body { margin: 0; }
 .doc-label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 6px; }
 .doc-input {
   width: 100%; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px;
-  font-size: 14px; margin-bottom: 8px;
+  font-size: 14px; margin-bottom: 8px; background: #fff;
 }
 .doc-btn {
   border: none; border-radius: 10px; padding: 12px 14px; font-weight: 600; cursor: pointer;
@@ -236,6 +292,10 @@ body { margin: 0; }
 .doc-btn.ghost { background: transparent; color: #64748b; }
 .doc-alert {
   background: #fef2f2; color: #dc2626; border-left: 4px solid #ef4444;
+  padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px;
+}
+.doc-success {
+  background: #f0fdf4; color: #16a34a; border-left: 4px solid #22c55e;
   padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 12px;
 }
 .doc-note { font-size: 12px; color: #64748b; margin-top: 14px; }
