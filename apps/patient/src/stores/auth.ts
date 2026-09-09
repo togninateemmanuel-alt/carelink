@@ -74,8 +74,6 @@ export const useAuthStore = defineStore('auth', () => {
   async function signUp(email: string, password: string, firstName: string, lastName: string, phone?: string) {
     loading.value = true;
     try {
-      // Force redirect to the current origin (production Vercel URL or localhost)
-      // so email confirmation never sends the user to a wrong localhost:3000
       const redirectTo = `${window.location.origin}/dashboard`;
 
       const { data, error } = await supabase.auth.signUp({
@@ -86,8 +84,34 @@ export const useAuthStore = defineStore('auth', () => {
           emailRedirectTo: redirectTo,
         },
       });
-      if (error) throw error;
-      return data;
+
+      if (error) {
+        // Normalize "already registered" errors so the UI can handle them cleanly
+        const msg = (error.message || '').toLowerCase();
+        if (
+          msg.includes('already registered') ||
+          msg.includes('already exists') ||
+          msg.includes('user already') ||
+          error.status === 422
+        ) {
+          const alreadyExistsError = new Error('ACCOUNT_ALREADY_EXISTS');
+          (alreadyExistsError as any).original = error;
+          throw alreadyExistsError;
+        }
+        throw error;
+      }
+
+      // If email confirmation is disabled in Supabase, a session is returned immediately
+      if (data.session) {
+        session.value = data.session;
+        user.value = data.user;
+        await fetchProfile();
+        router.push('/dashboard');
+        return { success: true, redirected: true, data };
+      }
+
+      // Fallback (confirmation still enabled): account created but waiting for email
+      return { success: true, redirected: false, data };
     } finally {
       loading.value = false;
     }

@@ -40,20 +40,26 @@
             id="tab-login"
             class="btn"
             :style="mode === 'login' ? 'flex:1;background:white;color:var(--color-text-main);box-shadow:var(--shadow-sm)' : 'flex:1;background:transparent;color:var(--color-text-sub)'"
-            @click="mode = 'login'"
+            @click="switchToLogin()"
           >Connexion</button>
           <button
             id="tab-register"
             class="btn"
             :style="mode === 'register' ? 'flex:1;background:white;color:var(--color-text-main);box-shadow:var(--shadow-sm)' : 'flex:1;background:transparent;color:var(--color-text-sub)'"
-            @click="mode = 'register'"
+            @click="mode = 'register'; error = ''; info = ''"
           >Inscription</button>
         </div>
 
         <!-- Error alert -->
-        <div v-if="error" class="alert alert-error mb-4" style="margin-bottom:var(--space-4)">
+        <div v-if="error" class="alert alert-error" style="margin-bottom:var(--space-4)">
           <span>⚠️</span>
           <span>{{ error }}</span>
+        </div>
+
+        <!-- Info / success alert -->
+        <div v-if="info" class="alert alert-success" style="margin-bottom:var(--space-4)">
+          <span>ℹ️</span>
+          <span>{{ info }}</span>
         </div>
 
         <!-- Login Form -->
@@ -118,11 +124,7 @@
             <input id="reg-password" v-model="registerForm.password" type="password" class="input" placeholder="Au moins 8 caractères" required minlength="8" autocomplete="new-password" />
           </div>
 
-          <div v-if="registerSuccess" class="alert alert-success" style="margin-bottom:var(--space-4)">
-            ✅ Compte créé ! Vérifiez vos e-mails pour confirmer votre inscription.
-          </div>
-
-          <button id="btn-register" type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:var(--space-2)" :disabled="authStore.loading || registerSuccess">
+          <button id="btn-register" type="submit" class="btn btn-primary btn-lg" style="width:100%;margin-top:var(--space-2)" :disabled="authStore.loading">
             <span v-if="authStore.loading" class="spinner" style="width:18px;height:18px;border-width:2px" />
             <span v-else>Créer mon compte</span>
           </button>
@@ -143,7 +145,7 @@ import { useAuthStore } from '@/stores/auth';
 const authStore = useAuthStore();
 const mode = ref<'login' | 'register'>('login');
 const error = ref('');
-const registerSuccess = ref(false);
+const info = ref('');
 
 const loginForm = ref({ email: '', password: '' });
 const registerForm = ref({ firstName: '', lastName: '', email: '', phone: '', password: '' });
@@ -154,29 +156,59 @@ const features = [
   { icon: '💊', title: 'Marketplace pharmaceutique', desc: 'Comparez et commandez auprès de pharmacies vérifiées' },
 ];
 
+function switchToLogin(prefillEmail = '') {
+  mode.value = 'login';
+  error.value = '';
+  info.value = '';
+  if (prefillEmail) {
+    loginForm.value.email = prefillEmail;
+  }
+}
+
 async function handleLogin() {
   error.value = '';
+  info.value = '';
   try {
     await authStore.signIn(loginForm.value.email, loginForm.value.password);
   } catch (e: unknown) {
-    error.value = (e as Error).message || 'Erreur de connexion. Vérifiez vos identifiants.';
+    const msg = (e as Error).message || '';
+    if (msg.toLowerCase().includes('invalid login') || msg.toLowerCase().includes('invalid credentials')) {
+      error.value = 'Email ou mot de passe incorrect.';
+    } else {
+      error.value = msg || 'Erreur de connexion. Vérifiez vos identifiants.';
+    }
   }
 }
 
 async function handleRegister() {
   error.value = '';
-  registerSuccess.value = false;
+  info.value = '';
   try {
-    await authStore.signUp(
+    const result = await authStore.signUp(
       registerForm.value.email,
       registerForm.value.password,
       registerForm.value.firstName,
       registerForm.value.lastName,
       registerForm.value.phone || undefined
     );
-    registerSuccess.value = true;
+
+    // If we already redirected (session created), nothing more to do
+    if (result?.redirected) return;
+
+    // Fallback message only if confirmation is still required
+    info.value = 'Compte créé avec succès. Vous pouvez maintenant vous connecter.';
+    switchToLogin(registerForm.value.email);
   } catch (e: unknown) {
-    error.value = (e as Error).message || 'Erreur lors de la création du compte.';
+    const err = e as Error;
+
+    if (err.message === 'ACCOUNT_ALREADY_EXISTS') {
+      // Account already exists → switch to login and prefill email
+      info.value = 'Ce compte existe déjà. Connectez-vous avec votre email et votre mot de passe.';
+      switchToLogin(registerForm.value.email);
+      return;
+    }
+
+    error.value = err.message || 'Erreur lors de la création du compte.';
   }
 }
 </script>
