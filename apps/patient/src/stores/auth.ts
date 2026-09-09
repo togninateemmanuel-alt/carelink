@@ -74,10 +74,17 @@ export const useAuthStore = defineStore('auth', () => {
   async function signUp(email: string, password: string, firstName: string, lastName: string, phone?: string) {
     loading.value = true;
     try {
+      // Force redirect to the current origin (production Vercel URL or localhost)
+      // so email confirmation never sends the user to a wrong localhost:3000
+      const redirectTo = `${window.location.origin}/dashboard`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { first_name: firstName, last_name: lastName, phone } },
+        options: {
+          data: { first_name: firstName, last_name: lastName, phone },
+          emailRedirectTo: redirectTo,
+        },
       });
       if (error) throw error;
       return data;
