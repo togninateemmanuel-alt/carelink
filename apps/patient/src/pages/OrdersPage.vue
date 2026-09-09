@@ -9,7 +9,13 @@
     </div>
 
     <div v-else class="dash-list">
-      <div v-for="o in orders" :key="o.id" class="dash-section" style="margin-bottom:10px">
+      <RouterLink
+        v-for="o in orders"
+        :key="o.id"
+        :to="`/orders/${o.id}`"
+        class="dash-section"
+        style="margin-bottom:10px;display:block;text-decoration:none;color:inherit"
+      >
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
           <div>
             <div class="dash-list-title">{{ o.order_number }}</div>
@@ -24,7 +30,7 @@
         <div style="margin-top:4px;font-size:12px;color:var(--color-text-muted)">
           Paiement : {{ o.payment_status }}
         </div>
-      </div>
+      </RouterLink>
     </div>
   </AppLayout>
 </template>

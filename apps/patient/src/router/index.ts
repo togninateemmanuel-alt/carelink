@@ -11,7 +11,8 @@ const PrescriptionsPage = () => import('@/pages/PrescriptionsPage.vue');
 const MarketplacePage = () => import('@/pages/MarketplacePage.vue');
 const CartPage = () => import('@/pages/CartPage.vue');
 const OrdersPage = () => import('@/pages/OrdersPage.vue');
-const PlaceholderPage = () => import('@/pages/PlaceholderPage.vue');
+const OrderDetailPage = () => import('@/pages/OrderDetailPage.vue');
+const NotificationsPage = () => import('@/pages/NotificationsPage.vue');
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -28,7 +29,8 @@ export const router = createRouter({
     { path: '/marketplace', name: 'marketplace', component: MarketplacePage, meta: { requiresAuth: true } },
     { path: '/cart', name: 'cart', component: CartPage, meta: { requiresAuth: true } },
     { path: '/orders', name: 'orders', component: OrdersPage, meta: { requiresAuth: true } },
-    { path: '/orders/:id', name: 'order-detail', component: PlaceholderPage, meta: { requiresAuth: true } },
+    { path: '/orders/:id', name: 'order-detail', component: OrderDetailPage, meta: { requiresAuth: true } },
+    { path: '/notifications', name: 'notifications', component: NotificationsPage, meta: { requiresAuth: true } },
     { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
   ],
 });
