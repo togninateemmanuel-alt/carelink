@@ -8,7 +8,7 @@ const DossierPage = () => import('@/pages/DossierPage.vue');
 const AppointmentsPage = () => import('@/pages/AppointmentsPage.vue');
 const AppointmentBookingPage = () => import('@/pages/AppointmentBookingPage.vue');
 const PrescriptionsPage = () => import('@/pages/PrescriptionsPage.vue');
-const PrescriptionRequestPage = () => import('@/pages/PrescriptionRequestPage.vue');
+const OrdonnanceMobilePage = () => import('@/pages/OrdonnanceMobilePage.vue');
 const PrescriptionRequestsPage = () => import('@/pages/PrescriptionRequestsPage.vue');
 const MarketplacePage = () => import('@/pages/MarketplacePage.vue');
 const CartPage = () => import('@/pages/CartPage.vue');
@@ -28,7 +28,8 @@ export const router = createRouter({
     { path: '/appointments', name: 'appointments', component: AppointmentsPage, meta: { requiresAuth: true } },
     { path: '/appointments/new', name: 'appointments-new', component: AppointmentBookingPage, meta: { requiresAuth: true } },
     { path: '/prescriptions', name: 'prescriptions', component: PrescriptionsPage, meta: { requiresAuth: true } },
-    { path: '/prescriptions/new-request', name: 'prescription-request-new', component: PrescriptionRequestPage, meta: { requiresAuth: true } },
+    { path: '/ordonnance', name: 'ordonnance-mobile', component: OrdonnanceMobilePage, meta: { requiresAuth: true } },
+    { path: '/prescriptions/new-request', redirect: '/ordonnance' },
     { path: '/prescription-requests', name: 'prescription-requests', component: PrescriptionRequestsPage, meta: { requiresAuth: true } },
     { path: '/marketplace', name: 'marketplace', component: MarketplacePage, meta: { requiresAuth: true } },
     { path: '/cart', name: 'cart', component: CartPage, meta: { requiresAuth: true } },
@@ -41,14 +42,10 @@ export const router = createRouter({
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
-  if (!authStore.initialized) {
-    await authStore.initialize();
-  }
+  if (!authStore.initialized) await authStore.initialize();
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'auth', query: { redirect: to.fullPath } };
   }
-  if (to.meta.public && authStore.isAuthenticated) {
-    return { name: 'dashboard' };
-  }
+  if (to.meta.public && authStore.isAuthenticated) return { name: 'dashboard' };
   return true;
 });
