@@ -1,6 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft,
   User,
@@ -53,9 +56,56 @@ function ListItem({
 }
 
 export default function ProfilePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      setProfile(data || {
+        full_name: user.user_metadata?.full_name || "Utilisateur",
+        email: user.email,
+        phone: user.user_metadata?.phone || "",
+      });
+      setLoading(false);
+    };
+
+    loadProfile();
+  }, [router]);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-10">
-      {/* Header */}
       <header className="bg-surface px-5 pt-12 pb-4 flex items-center gap-4 sticky top-0 z-10 shadow-soft">
         <Link href="/" className="p-1 -ml-1">
           <ArrowLeft className="w-5 h-5 text-text-primary" strokeWidth={1.75} />
@@ -74,8 +124,12 @@ export default function ProfilePage() {
               <Pencil className="w-3.5 h-3.5" strokeWidth={2} />
             </button>
           </div>
-          <h2 className="mt-4 text-xl font-bold text-text-primary">Jean Koffi</h2>
-          <p className="text-text-secondary mt-1">+228 90 00 00 00</p>
+          <h2 className="mt-4 text-xl font-bold text-text-primary">
+            {profile?.full_name || "Utilisateur"}
+          </h2>
+          <p className="text-text-secondary mt-1">
+            {profile?.phone || profile?.email || ""}
+          </p>
         </div>
 
         {/* Informations personnelles */}
@@ -86,12 +140,12 @@ export default function ProfilePage() {
             </h3>
           </div>
           <div className="px-4 divide-y divide-border">
-            <ListItem icon={User} label="Nom complet" value="Jean Koffi" />
-            <ListItem icon={Phone} label="Téléphone" value="+228 90 00 00 00" />
-            <ListItem icon={Mail} label="Email" value="jean.koffi@email.com" />
-            <ListItem icon={Calendar} label="Date de naissance" value="12 mars 1990" />
-            <ListItem icon={Users} label="Sexe" value="Masculin" />
-            <ListItem icon={MapPin} label="Adresse" value="Lomé, Togo" />
+            <ListItem icon={User} label="Nom complet" value={profile?.full_name} />
+            <ListItem icon={Phone} label="Téléphone" value={profile?.phone || "Non renseigné"} />
+            <ListItem icon={Mail} label="Email" value={profile?.email || "Non renseigné"} />
+            <ListItem icon={Calendar} label="Date de naissance" value={profile?.date_of_birth || "Non renseigné"} />
+            <ListItem icon={Users} label="Sexe" value={profile?.gender || "Non renseigné"} />
+            <ListItem icon={MapPin} label="Adresse" value={profile?.address || "Non renseigné"} />
           </div>
         </section>
 
@@ -143,7 +197,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Logout */}
-        <button className="btn-danger-outline w-full mt-2">
+        <button onClick={handleLogout} className="btn-danger-outline w-full mt-2">
           <LogOut className="w-5 h-5" strokeWidth={1.75} />
           Se déconnecter
         </button>
