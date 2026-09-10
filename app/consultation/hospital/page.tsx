@@ -13,48 +13,45 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Stepper } from "@/components/ui/Stepper";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-
-const hospitals = [
-  {
-    id: "hopital-central",
-    name: "Hôpital Central",
-    rating: 4.7,
-    distance: "15 min",
-    insurances: ["INAM", "NSIA", "SUNU", "AXA", "Allianz"],
-    price: 160,
-  },
-  {
-    id: "clinique-sainte-marie",
-    name: "Clinique Sainte Marie",
-    rating: 4.5,
-    distance: "20 min",
-    insurances: ["INAM", "NSIA", "SUNU", "Allianz"],
-    price: 160,
-  },
-  {
-    id: "clinique-de-la-paix",
-    name: "Clinique de la Paix",
-    rating: 4.3,
-    distance: "10 min",
-    insurances: ["INAM", "NSIA", "SUNU"],
-    price: 160,
-  },
-];
+import type { Hospital } from "@/lib/supabase/types";
 
 export default function ChooseHospitalPage() {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<any>(null);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("consultationDraft");
     if (saved) {
       setDraft(JSON.parse(saved));
     } else {
-      // Si pas de données, retourner à l'étape 1
       router.replace("/consultation/new");
+      return;
     }
+
+    const loadHospitals = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("hospitals")
+        .select("*")
+        .eq("is_active", true)
+        .order("rating", { ascending: false });
+
+      if (error) {
+        console.error("Error loading hospitals:", error);
+        // Fallback démo si la table n'est pas encore peuplée
+        setHospitals([]);
+      } else {
+        setHospitals(data || []);
+      }
+      setLoading(false);
+    };
+
+    loadHospitals();
   }, [router]);
 
   const handleContinue = () => {
@@ -68,8 +65,8 @@ export default function ChooseHospitalPage() {
       hospital: {
         id: hospital.id,
         name: hospital.name,
-        price: hospital.price,
-        insurances: hospital.insurances,
+        price: hospital.consultation_price,
+        insurances: hospital.accepted_insurances || [],
       },
     };
 
@@ -77,7 +74,7 @@ export default function ChooseHospitalPage() {
     router.push("/consultation/insurance");
   };
 
-  if (!draft) {
+  if (!draft || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -87,7 +84,6 @@ export default function ChooseHospitalPage() {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      {/* Header */}
       <header className="bg-surface px-5 pt-12 pb-4 flex items-center gap-4 sticky top-0 z-10 shadow-soft">
         <Link href="/consultation/new" className="p-1 -ml-1">
           <ArrowLeft className="w-5 h-5 text-text-primary" strokeWidth={1.75} />
@@ -98,7 +94,6 @@ export default function ChooseHospitalPage() {
       </header>
 
       <main className="px-5 pt-6">
-        {/* Stepper */}
         <div className="mb-8">
           <Stepper currentStep={2} totalSteps={5} />
         </div>
@@ -110,72 +105,98 @@ export default function ChooseHospitalPage() {
           Sélectionnez l&apos;établissement qui vous convient
         </p>
 
-        <div className="space-y-4">
-          {hospitals.map((hospital) => {
-            const isSelected = selectedId === hospital.id;
+        {hospitals.length === 0 ? (
+          <div className="card text-center py-10">
+            <p className="text-text-secondary text-sm">
+              Aucun hôpital disponible pour le moment.
+            </p>
+            <p className="text-xs text-text-muted mt-2">
+              Vérifiez que le schéma SQL a bien été exécuté dans Supabase.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {hospitals.map((hospital) => {
+              const isSelected = selectedId === hospital.id;
+              const insurances = hospital.accepted_insurances || [];
 
-            return (
-              <button
-                key={hospital.id}
-                type="button"
-                onClick={() => setSelectedId(hospital.id)}
-                className={cn(
-                  "w-full text-left card transition-all duration-200",
-                  isSelected
-                    ? "ring-2 ring-primary border-primary bg-primary/5"
-                    : "hover:shadow-md"
-                )}
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
-                      isSelected ? "bg-primary text-white" : "bg-primary/10 text-primary"
-                    )}
-                  >
-                    <Building2 className="w-6 h-6" strokeWidth={1.75} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-semibold text-text-primary">
-                        {hospital.name}
-                      </h3>
-                      {isSelected && (
-                        <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" strokeWidth={1.75} />
+              return (
+                <button
+                  key={hospital.id}
+                  type="button"
+                  onClick={() => setSelectedId(hospital.id)}
+                  className={cn(
+                    "w-full text-left card transition-all duration-200",
+                    isSelected
+                      ? "ring-2 ring-primary border-primary bg-primary/5"
+                      : "hover:shadow-md"
+                  )}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
+                        isSelected
+                          ? "bg-primary text-white"
+                          : "bg-primary/10 text-primary"
                       )}
+                    >
+                      <Building2 className="w-6 h-6" strokeWidth={1.75} />
                     </div>
 
-                    <div className="flex items-center gap-3 mt-1.5 text-sm text-text-secondary">
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 text-warning fill-warning" strokeWidth={1.75} />
-                        {hospital.rating}/5
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" strokeWidth={1.75} />
-                        {hospital.distance}
-                      </span>
-                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold text-text-primary">
+                          {hospital.name}
+                        </h3>
+                        {isSelected && (
+                          <CheckCircle2
+                            className="w-5 h-5 text-primary flex-shrink-0"
+                            strokeWidth={1.75}
+                          />
+                        )}
+                      </div>
 
-                    <div className="mt-2.5 flex items-start gap-1.5">
-                      <Shield className="w-3.5 h-3.5 text-text-secondary mt-0.5 flex-shrink-0" strokeWidth={1.75} />
-                      <p className="text-xs text-text-secondary leading-relaxed">
-                        {hospital.insurances.join(", ")}
+                      <div className="flex items-center gap-3 mt-1.5 text-sm text-text-secondary">
+                        <span className="flex items-center gap-1">
+                          <Star
+                            className="w-3.5 h-3.5 text-warning fill-warning"
+                            strokeWidth={1.75}
+                          />
+                          {hospital.rating}/5
+                        </span>
+                        {hospital.city && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5" strokeWidth={1.75} />
+                            {hospital.city}
+                          </span>
+                        )}
+                      </div>
+
+                      {insurances.length > 0 && (
+                        <div className="mt-2.5 flex items-start gap-1.5">
+                          <Shield
+                            className="w-3.5 h-3.5 text-text-secondary mt-0.5 flex-shrink-0"
+                            strokeWidth={1.75}
+                          />
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            {insurances.join(", ")}
+                          </p>
+                        </div>
+                      )}
+
+                      <p className="mt-3 text-primary font-bold text-lg">
+                        {hospital.consultation_price} F CFA
                       </p>
                     </div>
-
-                    <p className="mt-3 text-primary font-bold text-lg">
-                      {hospital.price} F CFA
-                    </p>
                   </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </main>
 
-      {/* Fixed bottom button */}
       <div className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border p-5">
         <button
           type="button"
