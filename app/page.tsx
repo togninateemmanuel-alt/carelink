@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -11,7 +14,49 @@ import {
   Clock,
 } from "lucide-react";
 
+interface Appointment {
+  id: number;
+  fullName: string;
+  consultationType: string;
+  hospital: { name: string };
+  queueNumber: number;
+  status: string;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
+  const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
+  const [firstName, setFirstName] = useState("Jean");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("appointments");
+    if (saved) {
+      const list: Appointment[] = JSON.parse(saved);
+      const upcoming = list
+        .filter((a) => a.status === "Confirmé")
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      if (upcoming.length > 0) {
+        setNextAppointment(upcoming[0]);
+        if (upcoming[0].fullName) {
+          setFirstName(upcoming[0].fullName.split(" ")[0]);
+        }
+      }
+    }
+  }, []);
+
+  const formatDate = (iso: string) => {
+    return new Date(iso).toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -25,11 +70,13 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <button className="relative p-2 rounded-full hover:bg-slate-100 transition">
             <Bell className="w-5 h-5 text-text-secondary" strokeWidth={1.75} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger rounded-full" />
           </button>
-          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+          <Link
+            href="/profile"
+            className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center"
+          >
             <User className="w-5 h-5 text-primary" strokeWidth={1.75} />
-          </div>
+          </Link>
         </div>
       </header>
 
@@ -37,7 +84,7 @@ export default function DashboardPage() {
         {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold text-text-primary">
-            Bonjour, Jean 👋
+            Bonjour, {firstName} 👋
           </h1>
           <p className="text-text-secondary mt-1">
             Comment allez-vous aujourd&apos;hui ?
@@ -71,32 +118,46 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="card">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-6 h-6 text-primary" strokeWidth={1.75} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-text-primary truncate">
-                  Hôpital Central
-                </h4>
-                <p className="text-sm text-text-secondary mt-0.5 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  Mercredi 28 mai • 10:30
-                </p>
-                <div className="flex items-center gap-3 mt-2">
-                  <span className="text-sm text-text-secondary flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    N° 12
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-success-light text-success">
-                    <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                    Confirmé
-                  </span>
+          {nextAppointment ? (
+            <div className="card">
+              <div className="flex gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-6 h-6 text-primary" strokeWidth={1.75} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-text-primary truncate">
+                    {nextAppointment.hospital.name}
+                  </h4>
+                  <p className="text-sm text-text-secondary mt-0.5 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    {formatDate(nextAppointment.createdAt)}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
+                    <span className="text-sm text-text-secondary flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
+                      N° {nextAppointment.queueNumber}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-success-light text-success">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                      {nextAppointment.status}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="card text-center py-8">
+              <p className="text-text-secondary text-sm">
+                Vous n&apos;avez aucun rendez-vous à venir
+              </p>
+              <Link
+                href="/consultation/new"
+                className="text-primary text-sm font-medium mt-2 inline-block"
+              >
+                Prendre un rendez-vous →
+              </Link>
+            </div>
+          )}
         </section>
 
         {/* Quick actions */}

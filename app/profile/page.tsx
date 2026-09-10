@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -102,7 +104,11 @@ export default function ProfilePage() {
           </div>
           <div className="px-4 divide-y divide-border">
             <ListItem icon={Lock} label="Modifier le mot de passe" />
-            <ListItem icon={KeyRound} label="Code d'ordonnance" />
+            <ListItem
+              icon={KeyRound}
+              label="Code d'ordonnance"
+              href="/prescription-code"
+            />
             <ListItem icon={ShieldCheck} label="Authentification à 2 facteurs" />
           </div>
         </section>
