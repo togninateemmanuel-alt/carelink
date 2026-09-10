@@ -33,7 +33,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Routes protégées (nécessitent d'être connecté)
   const protectedPaths = [
     "/consultation",
     "/appointments",
@@ -41,13 +40,13 @@ export async function middleware(request: NextRequest) {
     "/pharmacy",
     "/profile",
     "/prescription-code",
+    "/hospital",
   ];
 
   const isProtected = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
-  // Routes d'auth (rediriger si déjà connecté)
   const authPaths = ["/login", "/register"];
   const isAuthPage = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
