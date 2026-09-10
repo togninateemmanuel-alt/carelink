@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   FileText,
   LogOut,
-  Stethoscope,
+  Calendar,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,7 @@ interface AppointmentRow {
   has_insurance: boolean;
   insurance_company: string | null;
   created_at: string;
+  scheduled_at: string | null;
   profiles: { full_name: string; phone: string | null } | null;
   hospitals: { name: string } | null;
 }
@@ -60,12 +61,11 @@ export default function HospitalDashboardPage() {
       return;
     }
 
-    // Pour la démo : on charge tous les rendez-vous (plus tard filtré par hospital_id du médecin)
     const { data, error } = await supabase
       .from("appointments")
       .select(
         `id, consultation_type, symptoms, status, queue_number, priority,
-         remaining_amount, has_insurance, insurance_company, created_at,
+         remaining_amount, has_insurance, insurance_company, created_at, scheduled_at,
          profiles!appointments_patient_id_fkey(full_name, phone),
          hospitals(name)`
       )
@@ -74,7 +74,6 @@ export default function HospitalDashboardPage() {
 
     if (error) {
       console.error(error);
-      // Fallback sans jointure profiles si la FK pose problème
       const { data: simple } = await supabase
         .from("appointments")
         .select("*, hospitals(name)")
@@ -124,7 +123,14 @@ export default function HospitalDashboardPage() {
               <p className="text-xs text-text-secondary">{hospitalName}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Link
+              href="/hospital/calendar"
+              className="p-2 rounded-full hover:bg-slate-100"
+              title="Calendrier"
+            >
+              <Calendar className="w-5 h-5 text-text-secondary" strokeWidth={1.75} />
+            </Link>
             <button className="relative p-2 rounded-full hover:bg-slate-100">
               <Bell className="w-5 h-5 text-text-secondary" strokeWidth={1.75} />
               {pendingCount > 0 && (
@@ -141,7 +147,6 @@ export default function HospitalDashboardPage() {
       </header>
 
       <main className="px-5 pt-5">
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="card text-center py-4">
             <p className="text-2xl font-bold text-warning">{pendingCount}</p>
@@ -159,7 +164,22 @@ export default function HospitalDashboardPage() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Accès rapide calendrier */}
+        <Link
+          href="/hospital/calendar"
+          className="card flex items-center gap-4 mb-6 active:scale-[0.99] transition"
+        >
+          <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-primary" strokeWidth={1.75} />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-text-primary">Calendrier des consultations</h3>
+            <p className="text-sm text-text-secondary">
+              Voir les créneaux occupés et disponibles
+            </p>
+          </div>
+        </Link>
+
         <div className="flex gap-2 mb-5">
           {(
             [
@@ -228,7 +248,9 @@ export default function HospitalDashboardPage() {
                   <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs text-text-muted">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      {formatDate(apt.created_at)}
+                      {apt.scheduled_at
+                        ? formatDate(apt.scheduled_at)
+                        : formatDate(apt.created_at)}
                     </span>
                     <span className="flex items-center gap-1">
                       {apt.status === "pending" ? (
