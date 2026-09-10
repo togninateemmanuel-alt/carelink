@@ -13,38 +13,72 @@ import {
   Building2,
   Clock,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-interface Appointment {
-  id: number;
-  fullName: string;
-  consultationType: string;
-  hospital: { name: string };
-  queueNumber: number;
+interface NextAppointment {
+  id: string;
+  consultation_type: string;
   status: string;
-  createdAt: string;
+  queue_number: number | null;
+  created_at: string;
+  hospitals: { name: string } | null;
 }
 
+const statusLabels: Record<string, string> = {
+  pending: "En attente",
+  validated: "Validé",
+  in_progress: "En cours",
+};
+
 export default function DashboardPage() {
-  const [nextAppointment, setNextAppointment] = useState<Appointment | null>(null);
-  const [firstName, setFirstName] = useState("Jean");
+  const [firstName, setFirstName] = useState("");
+  const [nextAppointment, setNextAppointment] = useState<NextAppointment | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem("appointments");
-    if (saved) {
-      const list: Appointment[] = JSON.parse(saved);
-      const upcoming = list
-        .filter((a) => a.status === "Confirmé")
-        .sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      if (upcoming.length > 0) {
-        setNextAppointment(upcoming[0]);
-        if (upcoming[0].fullName) {
-          setFirstName(upcoming[0].fullName.split(" ")[0]);
-        }
+    const load = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        setLoading(false);
+        return;
       }
-    }
+
+      // Profil
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.full_name) {
+        setFirstName(profile.full_name.split(" ")[0]);
+      } else if (user.user_metadata?.full_name) {
+        setFirstName(user.user_metadata.full_name.split(" ")[0]);
+      }
+
+      // Prochain RDV
+      const { data: appointments } = await supabase
+        .from("appointments")
+        .select(
+          "id, consultation_type, status, queue_number, created_at, hospitals(name)"
+        )
+        .eq("patient_id", user.id)
+        .in("status", ["pending", "validated", "in_progress"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (appointments && appointments.length > 0) {
+        setNextAppointment(appointments[0] as any);
+      }
+
+      setLoading(false);
+    };
+
+    load();
   }, []);
 
   const formatDate = (iso: string) => {
@@ -59,7 +93,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <header className="bg-surface px-5 pt-12 pb-4 flex items-center justify-between sticky top-0 z-10 shadow-soft">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -81,17 +114,19 @@ export default function DashboardPage() {
       </header>
 
       <main className="px-5 pt-6 space-y-6">
-        {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold text-text-primary">
-            Bonjour, {firstName} 👋
+            {loading
+              ? "Bonjour..."
+              : firstName
+              ? `Bonjour, ${firstName} 👋`
+              : "Bonjour 👋"}
           </h1>
           <p className="text-text-secondary mt-1">
             Comment allez-vous aujourd&apos;hui ?
           </p>
         </div>
 
-        {/* Main CTA */}
         <Link
           href="/consultation/new"
           className="block bg-primary rounded-card p-5 text-white shadow-card active:scale-[0.98] transition"
@@ -109,7 +144,6 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        {/* Next appointment */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-text-primary">Prochain rendez-vous</h3>
@@ -118,7 +152,11 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {nextAppointment ? (
+          {loading ? (
+            <div className="card flex justify-center py-10">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : nextAppointment ? (
             <div className="card">
               <div className="flex gap-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -126,20 +164,22 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-text-primary truncate">
-                    {nextAppointment.hospital.name}
+                    {nextAppointment.hospitals?.name || "Hôpital"}
                   </h4>
                   <p className="text-sm text-text-secondary mt-0.5 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" strokeWidth={1.75} />
-                    {formatDate(nextAppointment.createdAt)}
+                    {formatDate(nextAppointment.created_at)}
                   </p>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-sm text-text-secondary flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
-                      N° {nextAppointment.queueNumber}
-                    </span>
+                    {nextAppointment.queue_number && (
+                      <span className="text-sm text-text-secondary flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" strokeWidth={1.75} />
+                        N° {nextAppointment.queue_number}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-success-light text-success">
                       <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                      {nextAppointment.status}
+                      {statusLabels[nextAppointment.status] || nextAppointment.status}
                     </span>
                   </div>
                 </div>
@@ -160,7 +200,6 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Quick actions */}
         <section>
           <h3 className="font-semibold text-text-primary mb-3">Actions rapides</h3>
           <div className="grid grid-cols-2 gap-3">
@@ -196,7 +235,6 @@ export default function DashboardPage() {
         </section>
       </main>
 
-      {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border px-2 pb-safe pt-2">
         <div className="flex items-center justify-around max-w-lg mx-auto">
           <Link href="/" className="flex flex-col items-center gap-1 py-2 px-3 text-primary">
