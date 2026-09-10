@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-background text-text-primary antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface rounded-card shadow-card p-5;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-button font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-dark px-5 py-3;
+  }
+
+  .btn-success {
+    @apply btn bg-success text-white hover:bg-green-700 px-5 py-3;
+  }
+
+  .btn-secondary {
+    @apply btn bg-text-secondary text-white hover:bg-slate-600 px-5 py-3;
+  }
+
+  .btn-outline {
+    @apply btn border border-border text-text-primary hover:bg-slate-50 px-5 py-3;
+  }
+
+  .btn-danger-outline {
+    @apply btn border border-danger text-danger hover:bg-danger-light px-5 py-3;
+  }
+
+  .input {
+    @apply w-full rounded-input border border-border bg-white px-4 py-3 text-[15px] text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-text-primary mb-1.5;
+  }
+}
