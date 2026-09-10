@@ -6,18 +6,25 @@ import Link from "next/link";
 import {
   ArrowLeft,
   User,
-  Building2,
   Shield,
   CreditCard,
-  Clock,
   CheckCircle2,
   Stethoscope,
   FileText,
   AlertCircle,
+  Calendar,
+  Clock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { cn } from "@/lib/utils";
+
+const TIME_SLOTS = [
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+  "11:00", "11:30", "12:00", "14:00", "14:30", "15:00",
+  "15:30", "16:00", "16:30", "17:00", "17:30",
+];
 
 export default function HospitalAppointmentDetailPage() {
   const router = useRouter();
@@ -31,11 +38,14 @@ export default function HospitalAppointmentDetailPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // Validation form
+  // Validation + créneau
   const [validatorName, setValidatorName] = useState("");
   const [observation, setObservation] = useState("");
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
 
-  // Prescription form
+  // Prescription
   const [doctorName, setDoctorName] = useState("");
   const [doctorPhone, setDoctorPhone] = useState("");
   const [doctorSignature, setDoctorSignature] = useState("");
@@ -50,6 +60,12 @@ export default function HospitalAppointmentDetailPage() {
     loadAppointment();
   }, [id]);
 
+  useEffect(() => {
+    if (scheduleDate && appointment?.hospital_id) {
+      loadOccupiedSlots(scheduleDate);
+    }
+  }, [scheduleDate, appointment?.hospital_id]);
+
   const loadAppointment = async () => {
     const supabase = createClient();
     const { data, error } = await supabase
@@ -62,7 +78,6 @@ export default function HospitalAppointmentDetailPage() {
       .single();
 
     if (error) {
-      // Fallback simple
       const { data: simple } = await supabase
         .from("appointments")
         .select("*, hospitals(name)")
@@ -75,17 +90,54 @@ export default function HospitalAppointmentDetailPage() {
     setLoading(false);
   };
 
+  const loadOccupiedSlots = async (dateStr: string) => {
+    const supabase = createClient();
+    const dayStart = new Date(dateStr);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dateStr);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const { data } = await supabase
+      .from("appointments")
+      .select("scheduled_at, duration_minutes")
+      .eq("hospital_id", appointment.hospital_id)
+      .not("scheduled_at", "is", null)
+      .gte("scheduled_at", dayStart.toISOString())
+      .lte("scheduled_at", dayEnd.toISOString())
+      .not("status", "eq", "cancelled")
+      .neq("id", id);
+
+    const occupied: string[] = [];
+    (data || []).forEach((a: any) => {
+      const start = new Date(a.scheduled_at);
+      const h = start.getHours().toString().padStart(2, "0");
+      const m = start.getMinutes().toString().padStart(2, "0");
+      occupied.push(`${h}:${m}`);
+    });
+    setOccupiedSlots(occupied);
+  };
+
   const handleValidate = async () => {
     if (!validatorName.trim()) {
       setError("Indiquez le nom du responsable.");
       return;
     }
+    if (!scheduleDate || !scheduleTime) {
+      setError("Choisissez une date et une heure de consultation.");
+      return;
+    }
+    if (occupiedSlots.includes(scheduleTime)) {
+      setError("Ce créneau est déjà occupé. Choisissez une autre heure.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
     const supabase = createClient();
 
-    // Calculer le numéro de file si pas encore attribué
+    const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00`);
+
     let queueNum = appointment.queue_number;
     if (!queueNum) {
       const { count } = await supabase
@@ -101,6 +153,8 @@ export default function HospitalAppointmentDetailPage() {
       .update({
         status: "validated",
         queue_number: queueNum,
+        scheduled_at: scheduledAt.toISOString(),
+        duration_minutes: 20,
         hospital_validated_at: new Date().toISOString(),
         hospital_validator_name: validatorName,
         hospital_observation: observation || null,
@@ -110,11 +164,14 @@ export default function HospitalAppointmentDetailPage() {
     setSaving(false);
 
     if (updateError) {
-      setError("Erreur lors de la validation.");
+      console.error(updateError);
+      setError("Erreur lors de la validation. Vérifiez que la migration SQL a été exécutée.");
       return;
     }
 
-    setMessage("Dossier validé et mis en file d'attente.");
+    setMessage(
+      `Dossier validé — RDV fixé le ${scheduleDate} à ${scheduleTime}.`
+    );
     setMode("view");
     loadAppointment();
   };
@@ -152,7 +209,6 @@ export default function HospitalAppointmentDetailPage() {
       return;
     }
 
-    // Marquer le RDV comme terminé
     await supabase
       .from("appointments")
       .update({ status: "completed" })
@@ -187,6 +243,7 @@ export default function HospitalAppointmentDetailPage() {
 
   const patientName = appointment.profiles?.full_name || "Patient";
   const hospitalName = appointment.hospitals?.name || "Hôpital";
+  const todayStr = new Date().toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-background pb-10">
@@ -205,7 +262,6 @@ export default function HospitalAppointmentDetailPage() {
           </div>
         )}
 
-        {/* Infos patient */}
         <div className="card space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -240,6 +296,21 @@ export default function HospitalAppointmentDetailPage() {
             </div>
           </div>
 
+          {appointment.scheduled_at && (
+            <div className="flex items-center gap-2 pt-2 border-t border-border text-sm">
+              <Calendar className="w-4 h-4 text-primary" strokeWidth={1.75} />
+              <span className="font-medium text-primary">
+                {new Date(appointment.scheduled_at).toLocaleDateString("fr-FR", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
+
           <div className="pt-2 border-t border-border">
             <p className="text-text-secondary text-sm mb-1">Symptômes</p>
             <p className="text-sm leading-relaxed">{appointment.symptoms}</p>
@@ -259,32 +330,28 @@ export default function HospitalAppointmentDetailPage() {
           </div>
         </div>
 
-        {/* Actions selon statut */}
         {appointment.status === "pending" && mode === "view" && (
-          <button
-            onClick={() => setMode("validate")}
-            className="btn-success w-full"
-          >
+          <button onClick={() => setMode("validate")} className="btn-success w-full">
             <CheckCircle2 className="w-5 h-5" strokeWidth={1.75} />
-            Valider ce dossier
+            Valider et fixer un créneau
           </button>
         )}
 
         {(appointment.status === "validated" || appointment.status === "in_progress") &&
           mode === "view" && (
-            <button
-              onClick={() => setMode("prescribe")}
-              className="btn-primary w-full"
-            >
+            <button onClick={() => setMode("prescribe")} className="btn-primary w-full">
               <Stethoscope className="w-5 h-5" strokeWidth={1.75} />
               Commencer la consultation
             </button>
           )}
 
-        {/* Formulaire validation */}
+        {/* Validation + choix créneau */}
         {mode === "validate" && (
           <div className="card space-y-4">
-            <h3 className="font-semibold text-text-primary">Validation du dossier</h3>
+            <h3 className="font-semibold text-text-primary">
+              Validation & créneau horaire
+            </h3>
+
             <Input
               id="validatorName"
               label="Nom du responsable"
@@ -292,6 +359,69 @@ export default function HospitalAppointmentDetailPage() {
               value={validatorName}
               onChange={(e) => setValidatorName(e.target.value)}
             />
+
+            <div>
+              <label className="label flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-text-secondary" strokeWidth={1.75} />
+                Date de consultation
+              </label>
+              <input
+                type="date"
+                min={todayStr}
+                value={scheduleDate}
+                onChange={(e) => {
+                  setScheduleDate(e.target.value);
+                  setScheduleTime("");
+                }}
+                className="input"
+              />
+            </div>
+
+            {scheduleDate && (
+              <div>
+                <label className="label flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-text-secondary" strokeWidth={1.75} />
+                  Heure disponible
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {TIME_SLOTS.map((slot) => {
+                    const isOccupied = occupiedSlots.includes(slot);
+                    const isSelected = scheduleTime === slot;
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        disabled={isOccupied}
+                        onClick={() => setScheduleTime(slot)}
+                        className={cn(
+                          "py-2.5 rounded-button text-sm font-medium border transition",
+                          isOccupied &&
+                            "bg-slate-100 text-text-muted border-border line-through cursor-not-allowed",
+                          isSelected &&
+                            !isOccupied &&
+                            "bg-primary text-white border-primary",
+                          !isSelected &&
+                            !isOccupied &&
+                            "bg-white text-text-primary border-border hover:border-primary"
+                        )}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-text-muted mt-2">
+                  Les créneaux barrés sont déjà occupés.
+                </p>
+                <Link
+                  href="/hospital/calendar"
+                  className="text-xs text-primary font-medium mt-1 inline-block"
+                >
+                  Voir le calendrier complet →
+                </Link>
+              </div>
+            )}
+
             <Textarea
               id="observation"
               label="Observation (optionnel)"
@@ -299,17 +429,16 @@ export default function HospitalAppointmentDetailPage() {
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
             />
+
             {error && (
               <div className="flex items-start gap-2 text-sm text-danger">
                 <AlertCircle className="w-4 h-4 mt-0.5" strokeWidth={1.75} />
                 {error}
               </div>
             )}
+
             <div className="flex gap-3">
-              <button
-                onClick={() => setMode("view")}
-                className="btn-outline flex-1"
-              >
+              <button onClick={() => setMode("view")} className="btn-outline flex-1">
                 Annuler
               </button>
               <button
@@ -317,13 +446,13 @@ export default function HospitalAppointmentDetailPage() {
                 disabled={saving}
                 className="btn-success flex-1"
               >
-                {saving ? "..." : "Valider"}
+                {saving ? "..." : "Valider le créneau"}
               </button>
             </div>
           </div>
         )}
 
-        {/* Formulaire prescription */}
+        {/* Prescription */}
         {mode === "prescribe" && (
           <div className="card space-y-4">
             <h3 className="font-semibold text-text-primary flex items-center gap-2">
@@ -374,7 +503,9 @@ export default function HospitalAppointmentDetailPage() {
             <Textarea
               id="medications"
               label="Médicaments prescrits"
-              placeholder={"Paracétamol 500 mg — 2 comprimés/jour\nAmoxicilline 500 mg — 1 matin et soir\nDurée : 5 jours"}
+              placeholder={
+                "Paracétamol 500 mg — 2 comprimés/jour\nAmoxicilline 500 mg — 1 matin et soir\nDurée : 5 jours"
+              }
               value={medications}
               onChange={(e) => setMedications(e.target.value)}
             />
@@ -410,10 +541,7 @@ export default function HospitalAppointmentDetailPage() {
             )}
 
             <div className="flex gap-3">
-              <button
-                onClick={() => setMode("view")}
-                className="btn-outline flex-1"
-              >
+              <button onClick={() => setMode("view")} className="btn-outline flex-1">
                 Annuler
               </button>
               <button
@@ -432,7 +560,9 @@ export default function HospitalAppointmentDetailPage() {
           <div className="card bg-success-light border border-success/20 text-sm text-success">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5" strokeWidth={1.75} />
-              <span className="font-medium">Consultation terminée — ordonnance envoyée</span>
+              <span className="font-medium">
+                Consultation terminée — ordonnance envoyée
+              </span>
             </div>
           </div>
         )}
