@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Calendar,
   Clock,
+  ArrowRightLeft,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/Input";
@@ -26,6 +27,14 @@ const TIME_SLOTS = [
   "15:30", "16:00", "16:30", "17:00", "17:30",
 ];
 
+interface Doctor {
+  id: string;
+  specialty: string | null;
+  signature: string | null;
+  stamp: string | null;
+  is_available: boolean;
+}
+
 export default function HospitalAppointmentDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -34,7 +43,9 @@ export default function HospitalAppointmentDetailPage() {
   const [appointment, setAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState<"view" | "validate" | "prescribe">("view");
+  const [mode, setMode] = useState<
+    "view" | "validate" | "prescribe" | "transfer"
+  >("view");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -44,6 +55,12 @@ export default function HospitalAppointmentDetailPage() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
   const [occupiedSlots, setOccupiedSlots] = useState<string[]>([]);
+
+  // Transfert
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
+  const [transferReason, setTransferReason] = useState("");
+  const [transferFromName, setTransferFromName] = useState("");
 
   // Prescription
   const [doctorName, setDoctorName] = useState("");
@@ -72,7 +89,8 @@ export default function HospitalAppointmentDetailPage() {
       .from("appointments")
       .select(
         `*, profiles!appointments_patient_id_fkey(full_name, phone, email),
-         hospitals(name, consultation_price)`
+         hospitals(name, consultation_price),
+         doctors(id, specialty, signature)`
       )
       .eq("id", id)
       .single();
@@ -88,6 +106,23 @@ export default function HospitalAppointmentDetailPage() {
       setAppointment(data);
     }
     setLoading(false);
+  };
+
+  const loadDoctors = async () => {
+    if (!appointment?.hospital_id) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("doctors")
+      .select("id, specialty, signature, stamp, is_available")
+      .eq("hospital_id", appointment.hospital_id)
+      .eq("is_available", true)
+      .order("specialty");
+
+    // Exclure le médecin actuellement assigné
+    const list = (data || []).filter(
+      (d: Doctor) => d.id !== appointment.doctor_id
+    );
+    setDoctors(list);
   };
 
   const loadOccupiedSlots = async (dateStr: string) => {
@@ -117,6 +152,65 @@ export default function HospitalAppointmentDetailPage() {
     setOccupiedSlots(occupied);
   };
 
+  const openTransfer = () => {
+    setMode("transfer");
+    setError("");
+    setMessage("");
+    loadDoctors();
+  };
+
+  const handleTransfer = async () => {
+    if (!selectedDoctorId) {
+      setError("Sélectionnez un médecin destinataire.");
+      return;
+    }
+    if (!transferFromName.trim()) {
+      setError("Indiquez votre nom.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    const supabase = createClient();
+    const targetDoctor = doctors.find((d) => d.id === selectedDoctorId);
+
+    // Mettre à jour le médecin assigné
+    const { error: updateError } = await supabase
+      .from("appointments")
+      .update({
+        doctor_id: selectedDoctorId,
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      console.error(updateError);
+      setError("Erreur lors du transfert.");
+      setSaving(false);
+      return;
+    }
+
+    // Historique du transfert
+    await supabase.from("appointment_transfers").insert({
+      appointment_id: id,
+      from_doctor_id: appointment.doctor_id || null,
+      to_doctor_id: selectedDoctorId,
+      from_doctor_name: transferFromName,
+      to_doctor_name: targetDoctor?.signature || "Médecin",
+      reason: transferReason || "Planning saturé",
+      transferred_by: transferFromName,
+    });
+
+    setSaving(false);
+    setMessage(
+      `Dossier transféré à ${targetDoctor?.signature || "le médecin"}${targetDoctor?.specialty ? ` (${targetDoctor.specialty})` : ""}.`
+    );
+    setMode("view");
+    setSelectedDoctorId("");
+    setTransferReason("");
+    loadAppointment();
+  };
+
   const handleValidate = async () => {
     if (!validatorName.trim()) {
       setError("Indiquez le nom du responsable.");
@@ -135,7 +229,6 @@ export default function HospitalAppointmentDetailPage() {
     setError("");
 
     const supabase = createClient();
-
     const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}:00`);
 
     let queueNum = appointment.queue_number;
@@ -165,13 +258,13 @@ export default function HospitalAppointmentDetailPage() {
 
     if (updateError) {
       console.error(updateError);
-      setError("Erreur lors de la validation. Vérifiez que la migration SQL a été exécutée.");
+      setError(
+        "Erreur lors de la validation. Vérifiez que les migrations SQL ont été exécutées."
+      );
       return;
     }
 
-    setMessage(
-      `Dossier validé — RDV fixé le ${scheduleDate} à ${scheduleTime}.`
-    );
+    setMessage(`Dossier validé — RDV fixé le ${scheduleDate} à ${scheduleTime}.`);
     setMode("view");
     loadAppointment();
   };
@@ -244,6 +337,7 @@ export default function HospitalAppointmentDetailPage() {
   const patientName = appointment.profiles?.full_name || "Patient";
   const hospitalName = appointment.hospitals?.name || "Hôpital";
   const todayStr = new Date().toISOString().split("T")[0];
+  const currentDoctorName = appointment.doctors?.signature;
 
   return (
     <div className="min-h-screen bg-background pb-10">
@@ -296,6 +390,18 @@ export default function HospitalAppointmentDetailPage() {
             </div>
           </div>
 
+          {currentDoctorName && (
+            <div className="flex items-center gap-2 text-sm pt-2 border-t border-border">
+              <Stethoscope className="w-4 h-4 text-primary" strokeWidth={1.75} />
+              <span>
+                Médecin assigné : <strong>{currentDoctorName}</strong>
+                {appointment.doctors?.specialty
+                  ? ` · ${appointment.doctors.specialty}`
+                  : ""}
+              </span>
+            </div>
+          )}
+
           {appointment.scheduled_at && (
             <div className="flex items-center gap-2 pt-2 border-t border-border text-sm">
               <Calendar className="w-4 h-4 text-primary" strokeWidth={1.75} />
@@ -330,22 +436,119 @@ export default function HospitalAppointmentDetailPage() {
           </div>
         </div>
 
-        {appointment.status === "pending" && mode === "view" && (
-          <button onClick={() => setMode("validate")} className="btn-success w-full">
-            <CheckCircle2 className="w-5 h-5" strokeWidth={1.75} />
-            Valider et fixer un créneau
-          </button>
+        {/* Actions */}
+        {mode === "view" && appointment.status !== "completed" && appointment.status !== "cancelled" && (
+          <div className="space-y-3">
+            {appointment.status === "pending" && (
+              <button onClick={() => setMode("validate")} className="btn-success w-full">
+                <CheckCircle2 className="w-5 h-5" strokeWidth={1.75} />
+                Valider et fixer un créneau
+              </button>
+            )}
+
+            {(appointment.status === "validated" ||
+              appointment.status === "in_progress") && (
+              <button onClick={() => setMode("prescribe")} className="btn-primary w-full">
+                <Stethoscope className="w-5 h-5" strokeWidth={1.75} />
+                Commencer la consultation
+              </button>
+            )}
+
+            {/* Transfert — disponible dès qu'il y a un dossier actif */}
+            <button onClick={openTransfer} className="btn-outline w-full">
+              <ArrowRightLeft className="w-5 h-5" strokeWidth={1.75} />
+              Transférer à un autre médecin
+            </button>
+          </div>
         )}
 
-        {(appointment.status === "validated" || appointment.status === "in_progress") &&
-          mode === "view" && (
-            <button onClick={() => setMode("prescribe")} className="btn-primary w-full">
-              <Stethoscope className="w-5 h-5" strokeWidth={1.75} />
-              Commencer la consultation
-            </button>
-          )}
+        {/* ===== TRANSFERT ===== */}
+        {mode === "transfer" && (
+          <div className="card space-y-4">
+            <h3 className="font-semibold text-text-primary flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5" strokeWidth={1.75} />
+              Transférer le dossier
+            </h3>
+            <p className="text-sm text-text-secondary">
+              Utile si votre planning est saturé. Le dossier sera confié à un
+              collègue du même hôpital.
+            </p>
 
-        {/* Validation + choix créneau */}
+            <Input
+              id="transferFromName"
+              label="Votre nom"
+              placeholder="Ex : Dr Mensah"
+              value={transferFromName}
+              onChange={(e) => setTransferFromName(e.target.value)}
+            />
+
+            <div>
+              <label className="label">Médecin destinataire</label>
+              {doctors.length === 0 ? (
+                <div className="p-4 rounded-xl bg-slate-50 text-sm text-text-secondary">
+                  Aucun autre médecin disponible dans cet hôpital.
+                  <br />
+                  <span className="text-xs">
+                    Exécutez la migration SQL des médecins de démo si besoin.
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {doctors.map((doc) => (
+                    <button
+                      key={doc.id}
+                      type="button"
+                      onClick={() => setSelectedDoctorId(doc.id)}
+                      className={cn(
+                        "w-full text-left p-3 rounded-xl border transition",
+                        selectedDoctorId === doc.id
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border bg-white hover:border-primary/40"
+                      )}
+                    >
+                      <p className="font-medium text-text-primary">
+                        {doc.signature || "Médecin"}
+                      </p>
+                      <p className="text-xs text-text-secondary mt-0.5">
+                        {doc.specialty || "Spécialité non renseignée"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Textarea
+              id="transferReason"
+              label="Motif du transfert (optionnel)"
+              placeholder="Ex : Planning saturé, spécialité plus adaptée..."
+              value={transferReason}
+              onChange={(e) => setTransferReason(e.target.value)}
+            />
+
+            {error && (
+              <div className="flex items-start gap-2 text-sm text-danger">
+                <AlertCircle className="w-4 h-4 mt-0.5" strokeWidth={1.75} />
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => setMode("view")} className="btn-outline flex-1">
+                Annuler
+              </button>
+              <button
+                onClick={handleTransfer}
+                disabled={saving || doctors.length === 0}
+                className="btn-primary flex-1 disabled:opacity-50"
+              >
+                {saving ? "..." : "Confirmer le transfert"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== VALIDATION ===== */}
         {mode === "validate" && (
           <div className="card space-y-4">
             <h3 className="font-semibold text-text-primary">
@@ -452,7 +655,7 @@ export default function HospitalAppointmentDetailPage() {
           </div>
         )}
 
-        {/* Prescription */}
+        {/* ===== PRESCRIPTION ===== */}
         {mode === "prescribe" && (
           <div className="card space-y-4">
             <h3 className="font-semibold text-text-primary flex items-center gap-2">
