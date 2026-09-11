@@ -13,6 +13,7 @@ import {
   FileText,
   LogOut,
   Calendar,
+  KeyRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ export default function HospitalDashboardPage() {
   const router = useRouter();
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [hospitalName, setHospitalName] = useState("Espace Hôpital");
+  const [hospitalId, setHospitalId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"pending" | "validated" | "all">("pending");
 
@@ -57,11 +59,32 @@ export default function HospitalDashboardPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      router.push("/login?redirect=/hospital");
+      router.push("/hospital/login");
       return;
     }
 
-    const { data, error } = await supabase
+    // Récupérer le médecin et son hôpital
+    const { data: doctor } = await supabase
+      .from("doctors")
+      .select("hospital_id, hospitals(name)")
+      .eq("profile_id", user.id)
+      .maybeSingle();
+
+    let hId = doctor?.hospital_id || null;
+
+    if (doctor?.hospitals) {
+      setHospitalName((doctor.hospitals as any).name || "Espace Hôpital");
+    }
+
+    // Si pas de profil médecin, rediriger vers inscription
+    if (!doctor) {
+      router.push("/hospital/register");
+      return;
+    }
+
+    setHospitalId(hId);
+
+    let query = supabase
       .from("appointments")
       .select(
         `id, consultation_type, symptoms, status, queue_number, priority,
@@ -72,12 +95,21 @@ export default function HospitalDashboardPage() {
       .order("priority", { ascending: true })
       .order("created_at", { ascending: true });
 
+    if (hId) {
+      query = query.eq("hospital_id", hId);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error(error);
-      const { data: simple } = await supabase
+      const fallback = supabase
         .from("appointments")
         .select("*, hospitals(name)")
         .order("created_at", { ascending: false });
+      const { data: simple } = hId
+        ? await fallback.eq("hospital_id", hId)
+        : await fallback;
       setAppointments((simple as any) || []);
     } else {
       setAppointments((data as any) || []);
@@ -107,7 +139,7 @@ export default function HospitalDashboardPage() {
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/hospital/login");
   };
 
   return (
@@ -124,6 +156,13 @@ export default function HospitalDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Link
+              href="/hospital/subscription"
+              className="p-2 rounded-full hover:bg-slate-100"
+              title="Abonnement"
+            >
+              <KeyRound className="w-5 h-5 text-text-secondary" strokeWidth={1.75} />
+            </Link>
             <Link
               href="/hospital/calendar"
               className="p-2 rounded-full hover:bg-slate-100"
@@ -164,21 +203,22 @@ export default function HospitalDashboardPage() {
           </div>
         </div>
 
-        {/* Accès rapide calendrier */}
-        <Link
-          href="/hospital/calendar"
-          className="card flex items-center gap-4 mb-6 active:scale-[0.99] transition"
-        >
-          <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <Link
+            href="/hospital/calendar"
+            className="card flex items-center gap-3 active:scale-[0.99] transition"
+          >
             <Calendar className="w-5 h-5 text-primary" strokeWidth={1.75} />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-text-primary">Calendrier des consultations</h3>
-            <p className="text-sm text-text-secondary">
-              Voir les créneaux occupés et disponibles
-            </p>
-          </div>
-        </Link>
+            <span className="text-sm font-medium text-text-primary">Calendrier</span>
+          </Link>
+          <Link
+            href="/hospital/subscription"
+            className="card flex items-center gap-3 active:scale-[0.99] transition"
+          >
+            <KeyRound className="w-5 h-5 text-primary" strokeWidth={1.75} />
+            <span className="text-sm font-medium text-text-primary">Abonnement</span>
+          </Link>
+        </div>
 
         <div className="flex gap-2 mb-5">
           {(
