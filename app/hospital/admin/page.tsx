@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Monitor, Shield, Ban, Clock3, Save } from "lucide-react";
+import { ArrowLeft, Check, Monitor, Shield, Ban, Clock3, Settings2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Device {
@@ -66,7 +66,7 @@ export default function HospitalAdminPage() {
 
   return <main className="min-h-screen bg-background px-5 py-10"><div className="max-w-5xl mx-auto">
     <Link href="/hospital" className="inline-flex items-center gap-2 text-sm text-text-secondary mb-6"><ArrowLeft className="w-4 h-4" /> Espace hôpital</Link>
-    <div className="flex items-start justify-between gap-4 mb-8"><div><p className="text-sm font-medium text-primary">Administration</p><h1 className="text-3xl font-bold text-text-primary mt-2">Ordinateurs</h1><p className="text-text-secondary mt-2">Autorisez, nommez et affectez les postes connectés à l'organisation.</p></div><Link href="/hospital/activate" className="btn-primary">Ajouter cet ordinateur</Link></div>
+    <div className="flex items-start justify-between gap-4 mb-8"><div><p className="text-sm font-medium text-primary">Administration</p><h1 className="text-3xl font-bold text-text-primary mt-2">Ordinateurs</h1><p className="text-text-secondary mt-2">Autorisez, nommez et affectez les postes connectés à l'organisation.</p></div><div className="flex gap-2"><Link href="/hospital/admin/configuration" className="px-4 py-2 rounded-lg border border-border text-sm font-semibold inline-flex items-center gap-2"><Settings2 className="w-4 h-4" /> Configuration</Link><Link href="/hospital/activate" className="btn-primary">Ajouter cet ordinateur</Link></div></div>
     {message && <div className="card mb-5 text-sm text-danger">{message}</div>}
     {loading ? <div className="text-text-secondary">Chargement des ordinateurs…</div> : devices.length === 0 ? <div className="card text-center py-12"><Monitor className="w-10 h-10 mx-auto text-text-muted mb-3" /><p className="font-semibold text-text-primary">Aucun ordinateur enregistré</p></div> : <div className="space-y-4">{devices.map(device => <div key={device.id} className="card"><div className="flex flex-col gap-5">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"><div className="flex gap-4 items-start"><div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center"><Monitor className="w-5 h-5 text-primary" /></div><div><p className="font-semibold text-text-primary">{device.device_name || "Ordinateur"}</p><p className="font-mono text-xs text-text-muted mt-1">{device.device_id}</p><div className="flex gap-2 mt-2 text-xs"><span className="px-2 py-1 rounded-full bg-slate-100">{typeLabel(device.workstation_type)}</span><span className="px-2 py-1 rounded-full bg-slate-100 flex items-center gap-1">{device.status === "active" ? <Check className="w-3 h-3" /> : <Clock3 className="w-3 h-3" />}{statusLabel(device.status)}</span></div></div></div>
