@@ -1,204 +1,22 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Activity,
-  ArrowRight,
-  Bell,
-  CalendarDays,
-  CheckCircle2,
-  ChevronDown,
-  Clock3,
-  FileCheck2,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  MoreHorizontal,
-  Plus,
-  Search,
-  Settings2,
-  Stethoscope,
-  Users,
-  UserRound,
-} from "lucide-react";
+import { Activity, ArrowRight, Bell, CalendarDays, CheckCircle2, Clock3, FileCheck2, FileText, LayoutDashboard, LogOut, Plus, Search, Settings2, Stethoscope, Users, UserRound } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-const patients = [
-  { name: "Afi K.", id: "CL-10482", reason: "Douleurs abdominales", time: "08:42", status: "À vérifier", initials: "AK" },
-  { name: "Kossi A.", id: "CL-10481", reason: "Fièvre et fatigue", time: "08:36", status: "À vérifier", initials: "KA" },
-  { name: "Ama S.", id: "CL-10479", reason: "Toux persistante", time: "08:21", status: "Validé", initials: "AS" },
-  { name: "Yaw E.", id: "CL-10476", reason: "Maux de tête", time: "08:04", status: "Planifié", initials: "YE" },
-];
+interface Row { id:string; patient_id:string; patient_report:string|null; scheduled_for:string|null; status:string; profiles?:{full_name:string|null}|null; }
 
-const stats = [
-  { label: "Nouveaux dossiers", value: "12", detail: "+3 aujourd’hui", icon: FileText },
-  { label: "À vérifier", value: "7", detail: "Nécessitent votre attention", icon: Clock3 },
-  { label: "Dossiers validés", value: "18", detail: "Depuis ce matin", icon: CheckCircle2 },
-  { label: "Rendez-vous", value: "24", detail: "Aujourd’hui", icon: CalendarDays },
-];
-
-export default function HospitalReceptionPage() {
-  return (
-    <main className="min-h-screen bg-[#f5f7fb] text-slate-900">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-[260px] shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col">
-          <div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white shadow-sm">
-              <Activity size={21} strokeWidth={2.2} />
-            </div>
-            <div>
-              <p className="text-[15px] font-bold tracking-tight">CareLink</p>
-              <p className="text-[11px] font-medium text-slate-400">HÔPITAL</p>
-            </div>
-          </div>
-
-          <div className="px-4 py-5">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Espace accueil</p>
-            <nav className="mt-3 space-y-1">
-              <NavItem active icon={<LayoutDashboard size={18} />} label="Tableau de bord" />
-              <NavItem icon={<FileText size={18} />} label="Dossiers patients" badge="7" />
-              <NavItem icon={<CalendarDays size={18} />} label="Rendez-vous" />
-              <NavItem icon={<Users size={18} />} label="File d’attente" />
-            </nav>
-
-            <p className="mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Gestion</p>
-            <nav className="mt-3 space-y-1">
-              <NavItem icon={<Stethoscope size={18} />} label="Médecins" />
-              <NavItem icon={<Settings2 size={18} />} label="Configuration" />
-            </nav>
-          </div>
-
-          <div className="mt-auto border-t border-slate-100 p-4">
-            <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">AM</div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">Agent accueil</p>
-                <p className="truncate text-xs text-slate-400">Accueil 1</p>
-              </div>
-              <button aria-label="Déconnexion" className="text-slate-400 transition hover:text-slate-900"><LogOut size={16} /></button>
-            </div>
-          </div>
-        </aside>
-
-        <section className="min-w-0 flex-1">
-          <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 backdrop-blur-xl sm:px-8">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
-                <span>CareLink Hôpital</span><span>/</span><span className="text-slate-600">Accueil 1</span>
-              </div>
-              <h1 className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">Bonjour, bienvenue 👋</h1>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:flex">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" /> Système opérationnel
-              </div>
-              <button aria-label="Notifications" className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50">
-                <Bell size={18} />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
-              </button>
-              <Link href="/hospital/admin" className="hidden h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-xs font-semibold text-white transition hover:bg-slate-800 sm:flex">
-                Administration <ArrowRight size={14} />
-              </Link>
-            </div>
-          </header>
-
-          <div className="mx-auto max-w-[1500px] space-y-7 p-5 sm:p-8">
-            <section className="overflow-hidden rounded-2xl bg-slate-950 p-6 text-white shadow-[0_20px_60px_-25px_rgba(15,23,42,0.45)] sm:p-8">
-              <div className="flex flex-col justify-between gap-7 md:flex-row md:items-center">
-                <div>
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Poste Accueil 1 · Actif
-                  </div>
-                  <h2 className="max-w-xl text-2xl font-bold tracking-tight sm:text-3xl">Gérez les dossiers patients avec simplicité.</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Vérifiez les informations, validez les dossiers et orientez chaque patient vers la bonne spécialité.</p>
-                </div>
-                <button className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:bg-slate-100">
-                  <Plus size={17} /> Nouveau dossier
-                </button>
-              </div>
-            </section>
-
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map(({ label, value, detail, icon: Icon }) => (
-                <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                  <div className="flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700"><Icon size={19} /></div>
-                    <MoreHorizontal size={18} className="text-slate-300" />
-                  </div>
-                  <p className="mt-5 text-sm font-medium text-slate-500">{label}</p>
-                  <div className="mt-1 flex items-end gap-2"><p className="text-3xl font-bold tracking-tight">{value}</p><p className="pb-1 text-xs font-medium text-emerald-600">{detail}</p></div>
-                </div>
-              ))}
-            </section>
-
-            <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div><h3 className="font-bold tracking-tight">Dossiers entrants</h3><p className="mt-1 text-xs text-slate-400">Les patients en attente de vérification</p></div>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-400"><Search size={15} /><span>Rechercher...</span></div>
-                    <button className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"><span>Tous</span><ChevronDown size={14} /></button>
-                  </div>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {patients.map((patient) => (
-                    <div key={patient.id} className="flex flex-col gap-4 p-5 transition hover:bg-slate-50/70 sm:flex-row sm:items-center">
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">{patient.initials}</div>
-                        <div className="min-w-0"><p className="font-semibold">{patient.name}</p><p className="mt-0.5 text-xs text-slate-400">{patient.id} · {patient.reason}</p></div>
-                      </div>
-                      <div className="flex items-center gap-4 sm:justify-end">
-                        <div className="hidden text-right sm:block"><p className="text-xs font-semibold text-slate-600">{patient.time}</p><p className="mt-1 text-[11px] text-slate-400">Arrivée</p></div>
-                        <Status status={patient.status} />
-                        <button className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">Ouvrir <ArrowRight size={13} /></button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-slate-100 p-4 text-center"><button className="text-xs font-bold text-slate-600 hover:text-slate-950">Voir tous les dossiers</button></div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between"><div><h3 className="font-bold tracking-tight">Aujourd’hui</h3><p className="mt-1 text-xs text-slate-400">17 septembre 2026</p></div><CalendarDays size={19} className="text-slate-400" /></div>
-                  <div className="mt-6 space-y-4">
-                    <MiniMetric icon={<Users size={17} />} label="Patients attendus" value="24" />
-                    <MiniMetric icon={<CheckCircle2 size={17} />} label="Confirmés" value="18" />
-                    <MiniMetric icon={<Clock3 size={17} />} label="En attente" value="6" />
-                  </div>
-                  <button className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-xs font-bold text-slate-700 transition hover:bg-slate-200">Voir le planning <ArrowRight size={14} /></button>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between"><h3 className="font-bold tracking-tight">Accès rapides</h3><Settings2 size={18} className="text-slate-400" /></div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <QuickAction icon={<UserRound size={17} />} label="Patients" />
-                    <QuickAction icon={<CalendarDays size={17} />} label="Planning" />
-                    <QuickAction icon={<FileCheck2 size={17} />} label="Validation" />
-                    <QuickAction icon={<Stethoscope size={17} />} label="Médecins" />
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        </section>
-      </div>
-    </main>
-  );
+export default function HospitalReceptionPage(){
+ const supabase=createClient(); const [rows,setRows]=useState<Row[]>([]); const [staff,setStaff]=useState<any>(null); const [loading,setLoading]=useState(true); const [search,setSearch]=useState("");
+ useEffect(()=>{load()},[]);
+ async function load(){const {data:{user}}=await supabase.auth.getUser(); if(!user){location.href="/hospital/login";return;} const {data:s}=await supabase.from("hospital_staff").select("id,hospital_id,display_name,role").eq("profile_id",user.id).eq("is_active",true).maybeSingle(); if(!s){location.href="/hospital/unauthorized";return;} setStaff(s); const {data:a}=await supabase.from("appointments").select("id,patient_id,patient_report,scheduled_for,status,profiles:patient_id(full_name)").eq("hospital_id",s.hospital_id).order("created_at",{ascending:false}).limit(50); setRows((a as Row[])||[]); setLoading(false); }
+ const filtered=useMemo(()=>rows.filter(r=>{const n=r.profiles?.full_name||r.patient_id; return `${n} ${r.patient_report||""}`.toLowerCase().includes(search.toLowerCase())}),[rows,search]);
+ const pending=rows.filter(r=>r.status==="pending").length, validated=rows.filter(r=>["validated","in_progress"].includes(r.status)).length, planned=rows.filter(r=>r.scheduled_for).length;
+ if(loading)return <main className="min-h-screen flex items-center justify-center bg-slate-50"><div className="h-9 w-9 animate-spin rounded-full border-4 border-slate-200 border-t-slate-950"/></main>;
+ return <main className="min-h-screen bg-[#f5f7fb] text-slate-900"><div className="flex min-h-screen"><aside className="hidden w-[260px] shrink-0 border-r border-slate-200 bg-white lg:flex lg:flex-col"><div className="flex h-20 items-center gap-3 border-b border-slate-100 px-6"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white"><Activity size={21}/></div><div><p className="font-bold">CareLink</p><p className="text-[11px] font-medium text-slate-400">HÔPITAL</p></div></div><nav className="space-y-1 p-4"><Nav active icon={<LayoutDashboard size={18}/>} label="Tableau de bord"/><Link href="/hospital/reception/dossiers" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"><FileText size={18}/>Dossiers patients{pending>0&&<span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">{pending}</span>}</Link><Link href="/hospital/reception/appointments" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"><CalendarDays size={18}/>Rendez-vous</Link><Link href="/hospital/reception/queue" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"><Users size={18}/>File d’attente</Link></nav><div className="mt-auto border-t border-slate-100 p-4"><div className="rounded-xl bg-slate-50 p-3"><p className="text-sm font-semibold">{staff?.display_name||"Accueil"}</p><p className="text-xs text-slate-400">Poste réception</p></div></div></aside><section className="min-w-0 flex-1"><header className="flex h-20 items-center justify-between border-b border-slate-200 bg-white/90 px-5 sm:px-8"><div><p className="text-xs text-slate-400">CareLink Hôpital / Accueil</p><h1 className="mt-1 text-xl font-bold sm:text-2xl">Tableau de bord</h1></div><div className="flex items-center gap-2"><span className="hidden items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600 sm:flex"><span className="h-2 w-2 rounded-full bg-emerald-500"/>Système opérationnel</span><button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200"><Bell size={18}/></button><Link href="/hospital/admin" className="hidden items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-xs font-bold text-white sm:flex">Administration <ArrowRight size={14}/></Link></div></header><div className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-8"><section className="rounded-2xl bg-slate-950 p-6 text-white shadow-xl sm:p-8"><div className="flex flex-col justify-between gap-6 md:flex-row md:items-center"><div><span className="mb-3 inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] font-semibold">Poste Accueil · Actif</span><h2 className="max-w-xl text-2xl font-bold sm:text-3xl">Gérez les dossiers patients avec simplicité.</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Vérifiez les informations, validez les dossiers et orientez chaque patient vers la bonne spécialité.</p></div><Link href="/hospital/reception/dossiers/new" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-950"><Plus size={17}/>Nouveau dossier</Link></div></section><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat icon={<FileText size={19}/>} label="Dossiers entrants" value={rows.length}/><Stat icon={<Clock3 size={19}/>} label="À vérifier" value={pending}/><Stat icon={<CheckCircle2 size={19}/>} label="Validés" value={validated}/><Stat icon={<CalendarDays size={19}/>} label="Rendez-vous planifiés" value={planned}/></section><section className="rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="font-bold">Dossiers entrants</h3><p className="mt-1 text-xs text-slate-400">Données synchronisées avec Supabase</p></div><label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-400"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..." className="w-40 bg-transparent outline-none"/></label></div><div className="divide-y divide-slate-100">{filtered.length===0?<div className="p-10 text-center text-sm text-slate-400">Aucun dossier à afficher.</div>:filtered.slice(0,12).map(r=><div key={r.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center"><div className="flex min-w-0 flex-1 items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-600"><UserRound size={18}/></div><div className="min-w-0"><p className="font-semibold">{r.profiles?.full_name||`Patient ${r.patient_id.slice(0,8)}`}</p><p className="mt-0.5 truncate text-xs text-slate-400">{r.patient_report||"Dossier sans motif renseigné"}</p></div></div><div className="flex items-center gap-3"><Status status={r.status}/><Link href={`/hospital/reception/dossiers/${r.id}`} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold">Ouvrir <ArrowRight size={13}/></Link></div></div>)}</div></section><div className="grid gap-4 md:grid-cols-3"><Quick href="/hospital/reception/dossiers" icon={<FileCheck2 size={17}/>} label="Valider les dossiers"/><Quick href="/hospital/reception/appointments" icon={<CalendarDays size={17}/>} label="Programmer un rendez-vous"/><Quick href="/hospital/reception/queue" icon={<Stethoscope size={17}/>} label="Orienter vers une spécialité"/></div></div></section></div></main>;
 }
-
-function NavItem({ icon, label, badge, active = false }: { icon: React.ReactNode; label: string; badge?: string; active?: boolean }) {
-  return <button className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${active ? "bg-slate-950 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}><span>{icon}</span><span className="flex-1 text-left">{label}</span>{badge && <span className={`rounded-full px-2 py-0.5 text-[10px] ${active ? "bg-white/10 text-white" : "bg-slate-100 text-slate-500"}`}>{badge}</span>}</button>;
-}
-
-function Status({ status }: { status: string }) {
-  const styles: Record<string, string> = { "À vérifier": "bg-amber-50 text-amber-700", Validé: "bg-emerald-50 text-emerald-700", Planifié: "bg-blue-50 text-blue-700" };
-  return <span className={`rounded-full px-2.5 py-1.5 text-[11px] font-bold ${styles[status] ?? "bg-slate-100 text-slate-600"}`}>{status}</span>;
-}
-
-function MiniMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return <div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500">{icon}</div><p className="flex-1 text-xs font-medium text-slate-500">{label}</p><p className="text-sm font-bold">{value}</p></div>;
-}
-
-function QuickAction({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return <button className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-left text-xs font-semibold text-slate-600 transition hover:border-slate-200 hover:bg-white hover:text-slate-950"><span className="text-slate-500">{icon}</span>{label}</button>;
-}
+function Nav({icon,label,active}:{icon:React.ReactNode;label:string;active?:boolean}){return <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold ${active?"bg-slate-950 text-white":"text-slate-500"}`}>{icon}{label}</div>}
+function Stat({icon,label,value}:{icon:React.ReactNode;label:string;value:number}){return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">{icon}</div><p className="mt-4 text-sm text-slate-500">{label}</p><p className="mt-1 text-3xl font-bold">{value}</p></div>}
+function Status({status}:{status:string}){const map:Record<string,string>={pending:"bg-amber-50 text-amber-700",validated:"bg-emerald-50 text-emerald-700",in_progress:"bg-blue-50 text-blue-700",completed:"bg-slate-100 text-slate-600",cancelled:"bg-rose-50 text-rose-700"};const labels:Record<string,string>={pending:"À vérifier",validated:"Validé",in_progress:"En cours",completed:"Terminé",cancelled:"Annulé"};return <span className={`rounded-full px-2.5 py-1.5 text-[11px] font-bold ${map[status]||"bg-slate-100 text-slate-600"}`}>{labels[status]||status}</span>}
+function Quick({href,icon,label}:{href:string;icon:React.ReactNode;label:string}){return <Link href={href} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold shadow-sm hover:shadow-md"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100">{icon}</span>{label}<ArrowRight size={15} className="ml-auto text-slate-400"/></Link>}
