@@ -62,7 +62,7 @@ export function Stepper({ currentStep, totalSteps = 5, labels }: StepperProps) {
             >
               {label}
             </span>
-          )}
+          ))}
         </div>
       )}
 
